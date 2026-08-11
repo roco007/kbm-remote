@@ -1,0 +1,27 @@
+{
+  "name": "@kbm-remote/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wire contract for KBM Remote — message types, codec, and frame validation (Protocol Specification v1.0)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint src tests --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "eslint": "^8.57.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.1"
+  }
+}

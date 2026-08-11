@@ -1,0 +1,26 @@
+{
+  "name": "@kbm-remote/input-provider",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Receiver-side input abstraction — swappable providers (nut.js fork default, native API fallback) behind one interface",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint src tests --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "eslint": "^8.57.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.1"
+  }
+}

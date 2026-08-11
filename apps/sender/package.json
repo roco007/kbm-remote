@@ -1,0 +1,35 @@
+{
+  "name": "@kbm-remote/sender",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KBM Remote mobile sender — Expo (React Native) with screens S1–S11 per the UX Design Document",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prebuild": "expo prebuild",
+    "clean": "rm -rf dist .expo .turbo node_modules"
+  },
+  "dependencies": {
+    "@kbm-remote/protocol": "workspace:*",
+    "@kbm-remote/network": "workspace:*",
+    "@kbm-remote/auth": "workspace:*",
+    "@kbm-remote/ui-components": "workspace:*",
+    "expo": "~53.0.0",
+    "expo-secure-store": "~14.2.0",
+    "react": "19.0.0",
+    "react-native": "0.79.2"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "eslint": "^8.57.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.1"
+  }
+}

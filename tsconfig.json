@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "references": [
+    { "path": "packages/protocol" },
+    { "path": "packages/network" },
+    { "path": "packages/auth" },
+    { "path": "packages/input-provider" },
+    { "path": "packages/ui-components" },
+    { "path": "apps/receiver" },
+    { "path": "apps/sender" }
+  ],
+  "files": []
+}

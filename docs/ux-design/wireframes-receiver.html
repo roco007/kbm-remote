@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KBM Remote — Receiver Wireframes</title>
+<style>
+  :root{--bg:#F4F5F7;--surface:#FFFFFF;--ink:#1A1D23;--mid:#6B7280;--line:#C9CDD4;--accent:#4F6EF7;--ok:#16A34A;--warn:#D97706;--bad:#DC2626}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',Arial,sans-serif;padding:24px}
+  h1{font-size:20px;margin-bottom:4px}
+  .sub{color:var(--mid);font-size:12px;margin-bottom:20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:24px;justify-items:center}
+  .screen{background:var(--surface);border:1.5px solid var(--line);border-radius:10px;width:456px}
+  .cap{font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.08em;padding:8px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+  .cap span{color:var(--accent)}
+  .pad{padding:14px}
+
+  /* window chrome */
+  .chrome{border:1.5px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;width:456px}
+  .titlebar{height:30px;background:#E9EBEF;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;padding:0 12px}
+  .dot{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--line);background:#FFFFFF}
+  .ttitle{margin-left:auto;font-size:10px;color:var(--mid)}
+
+  /* sidebar layout */
+  .app{display:flex;height:260px}
+  .sidebar{width:110px;background:#FAFBFC;border-right:1px solid var(--line);padding:10px 8px;display:flex;flex-direction:column;gap:2px;font-size:10px}
+  .brand{font-weight:800;font-size:12px;padding:4px 6px 10px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .nav{padding:6px 8px;border-radius:6px;color:var(--mid)}
+  .nav.on{background:#E8ECF9;color:var(--accent);font-weight:700}
+  .content{flex:1;padding:14px;overflow:hidden}
+
+  /* generic pieces */
+  .h1{font-size:15px;font-weight:700;margin-bottom:2px}
+  .h2{font-size:12px;font-weight:700;margin:10px 0 6px}
+  .txt{font-size:10px;color:var(--mid);line-height:1.4}
+  .card{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px}
+  .pill{display:inline-block;font-size:9px;font-weight:700;border-radius:999px;padding:2px 8px;vertical-align:middle}
+  .ok{background:#E4F5EA;color:var(--ok);border:1px solid var(--ok)}
+  .warn{background:#FEF3E1;color:var(--warn);border:1px solid var(--warn)}
+  .bad{background:#FDE7E9;color:var(--bad);border:1px solid var(--bad)}
+  .btn{display:inline-block;font-size:10px;font-weight:700;border-radius:8px;padding:6px 12px;border:1px solid var(--line);background:#FFFFFF;color:var(--ink)}
+  .btn.p{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.sm{padding:4px 9px;font-size:9px}
+  .link{color:var(--accent);font-size:10px;text-decoration:underline}
+  .input{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:10px;color:var(--mid);background:#FBFBFC;margin:4px 0 8px}
+  table{width:100%;border-collapse:collapse;font-size:10px}
+  th,td{border-bottom:1px solid var(--line);text-align:left;padding:5px 6px}
+  th{color:var(--mid);font-weight:600}
+  .row{display:flex;align-items:center;gap:8px;font-size:10px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .avatar{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--mid)}
+  .bar{height:7px;background:#E9EBEF;border-radius:4px;overflow:hidden;margin-top:4px}
+  .bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+  .switch{width:26px;height:14px;border-radius:999px;background:var(--line);position:relative;display:inline-block}
+  .switch::after{content:'';position:absolute;left:2px;top:2px;width:10px;height:10px;border-radius:50%;background:#fff}
+  .switch.on{background:var(--accent)}
+  .switch.on::after{left:14px}
+  .qr{width:70px;height:70px;border:1px solid var(--line);background:repeating-linear-gradient(45deg,#fff,#fff 6px,#D9DCE2 6px,#D9DCE2 8px)}
+  .code{font-family:monospace;font-size:14px;letter-spacing:.25em;font-weight:700;text-align:center;padding:6px;border:1px dashed var(--line);border-radius:8px;background:#FBFBFC}
+  .strip{height:26px;border-top:1px solid var(--line);display:flex;align-items:center;padding:0 14px;gap:14px;font-size:9px;color:var(--mid)}
+  .kbd{display:inline-block;font-family:monospace;font-size:9px;border:1px solid var(--line);border-radius:4px;padding:1px 5px;background:#F7F8FA}
+  .notif{border-left:3px solid var(--warn);background:#FEFBF5;border:1px solid var(--line);border-left-color:var(--warn);border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:10px}
+  .logline{font-family:monospace;font-size:9px;color:var(--mid);padding:2px 0;border-bottom:1px solid #F0F1F3}
+  .bignum{font-size:34px;font-weight:800;line-height:1}
+</style>
+</head>
+<body>
+<h1>KBM Remote — Desktop Receiver</h1>
+<div class="sub">Low-fidelity wireframes · light theme (dark is a token swap) · 960×640 window concept, screens scaled to 456px</div>
+<div class="grid">
+
+<!-- R1: Onboarding 1 -->
+<div class="screen"><div class="cap">R1 · Onboarding <span>Step 1/4 — Welcome</span></div>
+ <div class="pad" style="text-align:center">
+  <div style="width:72px;height:72px;border-radius:18px;border:2px solid var(--accent);margin:14px auto;display:flex;align-items:center;justify-content:center;font-size:28px">⌨🖱</div>
+  <div class="h1" style="font-size:17px">Control this computer from your phone</div>
+  <div class="txt" style="max-width:300px;margin:8px auto">KBM Remote runs in the background and lets paired devices control the mouse, keyboard, media, and clipboard — securely, over your local network.</div>
+  <div class="row" style="justify-content:center;border:0;margin-top:10px">
+   <span class="pill ok">TLS encrypted</span><span class="pill ok">Local network only</span><span class="pill ok">You approve every device</span>
+  </div>
+  <div style="margin-top:14px"><span class="btn p">Get started</span>&nbsp;<span class="btn">Skip tour</span></div>
+  <div class="txt" style="margin-top:10px">• • ● ○ — 4 steps</div>
+ </div></div>
+
+<!-- R2: Onboarding 2 -->
+<div class="screen"><div class="cap">R2 · Onboarding <span>Step 2/4 — Permissions</span></div>
+ <div class="pad">
+  <div class="h1">Grant system permissions</div>
+  <div class="txt">Your operating system requires these for input emulation. Each opens the OS dialog when you tap Continue.</div>
+  <div class="card"><div class="row" style="border:0"><span class="avatar">⌨</span><div style="flex:1"><b>Accessibility</b><br><span class="txt">Needed to control mouse and keyboard</span></div><span class="pill warn">Required</span></div></div>
+  <div class="card"><div class="row" style="border:0"><span class="avatar">🖥</span><div style="flex:1"><b>Screen recording</b><br><span class="txt">Optional — only for future screen sharing</span></div><span class="pill">Optional</span></div></div>
+  <div class="card"><div class="row" style="border:0"><span class="avatar">🔔</span><div style="flex:1"><b>Notifications</b><br><span class="txt">Alerts when a new device attempts to connect</span></div><span class="pill">Recommended</span></div></div>
+  <div style="text-align:right;margin-top:8px"><span class="btn p">Continue</span></div>
+ </div></div>
+
+<!-- R3: Onboarding 3 -->
+<div class="screen"><div class="cap">R3 · Onboarding <span>Step 3/4 — Firewall</span></div>
+ <div class="pad">
+  <div class="h1">Allow network access</div>
+  <div class="txt">Your firewall may block incoming connections. If prompted by the OS, allow KBM Remote on <b>Private networks</b>.</div>
+  <div class="card" style="text-align:center"><div style="font-size:9px;color:var(--mid);margin-bottom:6px">FIREWALL DIALOG WILL APPEAR:</div>
+   <div style="border:1px solid var(--line);border-radius:8px;padding:12px;background:#FBFBFC;font-size:10px">⚠ Windows Security<br><br>"KBM Remote wants to communicate on these networks"<br><br><span class="btn sm">☑ Private networks</span>&nbsp;<span class="btn sm">☐ Public networks</span></div></div>
+  <div class="txt">KBM Remote listens on a user-chosen port (default 24801) and publishes itself via mDNS.</div>
+  <div style="text-align:right;margin-top:8px"><span class="btn p">Allow &amp; continue</span></div>
+ </div></div>
+
+<!-- R4: Onboarding 4 -->
+<div class="screen"><div class="cap">R4 · Onboarding <span>Step 4/4 — Done</span></div>
+ <div class="pad" style="text-align:center">
+  <div style="width:56px;height:56px;border-radius:50%;background:#E4F5EA;color:var(--ok);margin:10px auto;display:flex;align-items:center;justify-content:center;font-size:24px">✓</div>
+  <div class="h1">You're all set</div>
+  <div class="txt" style="max-width:300px;margin:8px auto">KBM Remote is now running in your menu bar / system tray. Open the app on your phone and pair it with the QR code.</div>
+  <div style="margin-top:10px"><span class="btn p">Open dashboard</span></div>
+ </div></div>
+
+<!-- R5: Dashboard -->
+<div class="screen"><div class="cap">R5 · Dashboard <span>primary landing</span></div>
+ <div class="app">
+  <div class="sidebar"><div class="brand">⌨ KBM Remote</div>
+   <div class="nav on">Dashboard</div><div class="nav">Devices</div><div class="nav">Pairing</div><div class="nav">Permissions</div><div class="nav">Settings</div><div class="nav">Logs</div>
+  </div>
+  <div class="content">
+   <div class="h1">My PC — Office</div>
+   <div class="row" style="border:0"><span class="pill ok">● Online</span>&nbsp;<span class="txt">2 devices connected · port 24801 · mDNS active</span></div>
+   <div class="h2">Today</div>
+   <div style="display:flex;gap:8px">
+    <div class="card" style="flex:1;text-align:center"><div class="txt">Active sessions</div><div class="bignum" style="font-size:22px">2</div></div>
+    <div class="card" style="flex:1;text-align:center"><div class="txt">Input events</div><div class="bignum" style="font-size:22px">1,847</div></div>
+    <div class="card" style="flex:1;text-align:center"><div class="txt">Avg latency</div><div class="bignum" style="font-size:22px">9ms</div></div>
+   </div>
+   <div class="h2">Live sessions</div>
+   <div class="card"><div class="row" style="border:0"><span class="avatar">📱</span><div style="flex:1"><b>Raj's iPhone</b><br><span class="txt">Touchpad · keyboard · since 14:32</span></div><span class="pill ok">Connected</span><span class="btn sm">End</span></div></div>
+   <div class="card"><div class="row" style="border:0"><span class="avatar">🤖</span><div style="flex:1"><b>Pixel 8</b><br><span class="txt">Touchpad · since 14:10</span></div><span class="pill ok">Connected</span><span class="btn sm">End</span></div></div>
+   <div class="txt" style="margin-top:8px">No unpaired devices are visible to your phone until you start a pairing session.</div>
+  </div>
+ </div></div>
+
+<!-- R6: Pairing screen -->
+<div class="screen"><div class="cap">R6 · Pairing <span>active code shown</span></div>
+ <div class="app">
+  <div class="sidebar"><div class="brand">⌨ KBM Remote</div>
+   <div class="nav">Dashboard</div><div class="nav">Devices</div><div class="nav on">Pairing</div><div class="nav">Permissions</div><div class="nav">Settings</div><div class="nav">Logs</div>
+  </div>
+  <div class="content">
+   <div class="h1">Pair a new device</div>
+   <div class="txt">Scan this QR with KBM Remote on your phone, or enter the code manually. The code expires in 5 minutes.</div>
+   <div style="display:flex;gap:12px;align-items:flex-start;margin-top:10px">
+    <div class="qr"></div>
+    <div style="flex:1"><div class="code">8 3 K Q 7 P M 2</div>
+     <div class="txt" style="margin-top:6px">Expires: 15:04 · refreshes automatically</div>
+     <div style="margin-top:8px"><span class="btn">Regenerate code</span>&nbsp;<span class="btn">Copy code</span></div></div>
+   </div>
+   <div class="h2">Pending requests</div>
+   <div class="card"><div class="row" style="border:0"><span class="avatar">📱</span><div style="flex:1"><b>Unknown device</b> · 192.168.1.42<br><span class="txt">Wants: mouse + keyboard · asked 15:01</span></div><span class="btn sm" style="color:var(--bad);border-color:var(--bad)">Deny</span><span class="btn sm p">Approve</span></div></div>
+   <div class="txt" style="margin-top:8px">Every pairing attempt triggers a desktop notification, even with the window closed.</div>
+  </div>
+ </div></div>
+
+<!-- R7: Devices / trusted -->
+<div class="screen"><div class="cap">R7 · Trusted Devices <span>management</span></div>
+ <div class="app">
+  <div class="sidebar"><div class="brand">⌨ KBM Remote</div>
+   <div class="nav">Dashboard</div><div class="nav on">Devices</div><div class="nav">Pairing</div><div class="nav">Permissions</div><div class="nav">Settings</div><div class="nav">Logs</div>
+  </div>
+  <div class="content">
+   <div class="h1">Trusted devices</div>
+   <div class="row" style="border:0"><span class="txt">3 trusted · last seen shown</span><span class="btn sm">Revoke all</span></div>
+   <table><tr><th>Device</th><th>Permissions</th><th>Last seen</th><th></th></tr>
+    <tr><td><span class="avatar">📱</span> Raj's iPhone</td><td><span class="pill ok">Full</span></td><td>Now</td><td><span class="btn sm">Edit</span></td></tr>
+    <tr><td><span class="avatar">🤖</span> Pixel 8</td><td><span class="pill warn">Mouse only</span></td><td>2 h ago</td><td><span class="btn sm">Edit</span></td></tr>
+    <tr><td><span class="avatar">💻</span> Old iPad</td><td><span class="pill bad">Revoked</span></td><td>14 days ago</td><td><span class="btn sm">Restore</span></td></tr>
+   </table>
+   <div class="h2">Device detail — Raj's iPhone</div>
+   <div class="card">
+    <div class="row" style="border:0"><b>Allow</b>&nbsp;<span class="switch on"></span>&nbsp;<span class="txt">Mouse + touchpad</span></div>
+    <div class="row" style="border:0"><b>Allow</b>&nbsp;<span class="switch on"></span>&nbsp;<span class="txt">Keyboard &amp; shortcuts</span></div>
+    <div class="row" style="border:0"><b>Allow</b>&nbsp;<span class="switch"></span>&nbsp;<span class="txt">Media controls</span></div>
+    <div class="row" style="border:0"><b>Allow</b>&nbsp;<span class="switch"></span>&nbsp;<span class="txt">Clipboard sync</span></div>
+    <div class="row" style="border:0"><b>Allow</b>&nbsp;<span class="switch"></span>&nbsp;<span class="txt">File transfer</span></div>
+    <div style="margin-top:8px"><span class="btn">Save</span>&nbsp;<span class="btn" style="color:var(--bad);border-color:var(--bad)">Revoke this device</span></div>
+   </div>
+  </div>
+ </div></div>
+
+<!-- R8: Permissions -->
+<div class="screen"><div class="cap">R8 · Permissions <span>global policy</span></div>
+ <div class="app">
+  <div class="sidebar"><div class="brand">⌨ KBM Remote</div>
+   <div class="nav">Dashboard</div><div class="nav">Devices</div><div class="nav">Pairing</div><div class="nav on">Permissions</div><div class="nav">Settings</div><div class="nav">Logs</div>
+  </div>
+  <div class="content">
+   <div class="h1">Global permissions</div>
+   <div class="txt">Default policy applied to every new pairing. Individual devices can be more restrictive.</div>
+   <div class="card">
+    <div class="row" style="border:0"><b>Ask to approve</b>&nbsp;<span class="switch on"></span>&nbsp;<span class="txt">Every new pairing request (recommended)</span></div>
+    <div class="row" style="border:0"><b>Default caps</b><br>
+     <div style="margin-top:4px">
+      <div class="row" style="border:0;padding:3px 0"><span class="switch on"></span><span class="txt">Mouse &amp; touchpad</span></div>
+      <div class="row" style="border:0;padding:3px 0"><span class="switch on"></span><span class="txt">Keyboard input</span></div>
+      <div class="row" style="border:0;padding:3px 0"><span class="switch on"></span><span class="txt">Media keys</span></div>
+      <div class="row" style="border:0;padding:3px 0"><span class="switch"></span><span class="txt">Clipboard sync (opt-in)</span></div>
+      <div class="row" style="border:0;padding:3px 0"><span class="switch"></span><span class="txt">File transfer (opt-in)</span></div>
+     </div></div>
+   </div>
+   <div class="h2">Safety limits</div>
+   <div class="card">
+    <div class="row" style="border:0"><span class="txt">Pairing code TTL</span>&nbsp;<span class="btn">5 minutes</span></div>
+    <div class="row" style="border:0"><span class="txt">Max failed pairing attempts</span>&nbsp;<span class="btn">5 / hour</span></div>
+    <div class="row" style="border:0"><span class="txt">Rate limit input events</span>&nbsp;<span class="switch on"></span>&nbsp;<span class="txt">Cap at 500 events/sec per device</span></div>
+    <div class="row" style="border:0"><span class="txt">Auto-lock when session idle</span>&nbsp;<span class="btn">Never</span></div>
+   </div>
+  </div>
+ </div></div>
+
+<!-- R9: Settings -->
+<div class="screen"><div class="cap">R9 · Settings</div>
+ <div class="app">
+  <div class="sidebar"><div class="brand">⌨ KBM Remote</div>
+   <div class="nav">Dashboard</div><div class="nav">Devices</div><div class="nav">Pairing</div><div class="nav">Permissions</div><div class="nav on">Settings</div><div class="nav">Logs</div>
+  </div>
+  <div class="content">
+   <div class="h1">Settings</div>
+   <div class="h2">General</div>
+   <div class="card">
+    <div class="row" style="border:0"><span class="txt">Device name</span>&nbsp;<span class="input" style="margin:0;flex:1;max-width:160px">My PC — Office</span></div>
+    <div class="row" style="border:0"><span class="txt">Listen port</span>&nbsp;<span class="btn">24801</span></div>
+    <div class="row" style="border:0"><b>Start at login</b>&nbsp;<span class="switch on"></span></div>
+    <div class="row" style="border:0"><b>Minimize to tray on close</b>&nbsp;<span class="switch on"></span></div>
+   </div>
+   <div class="h2">Network</div>
+   <div class="card">
+    <div class="row" style="border:0"><b>Publish via mDNS</b>&nbsp;<span class="switch on"></span>&nbsp;<span class="txt">Service: _kbmremote._tcp.local</span></div>
+    <div class="row" style="border:0"><b>UDP beacon</b>&nbsp;<span class="switch on"></span>&nbsp;<span class="txt">Fallback for blocked multicast</span></div>
+    <div class="row" style="border:0"><span class="txt">Heartbeat interval</span>&nbsp;<span class="btn">5 s</span></div>
+   </div>
+   <div class="h2">Appearance &amp; system</div>
+   <div class="card">
+    <div class="row" style="border:0"><span class="txt">Theme</span>&nbsp;<span class="btn">Follow system</span>&nbsp;<span class="btn">Light</span>&nbsp;<span class="btn">Dark</span></div>
+    <div class="row" style="border:0"><b>Desktop notifications</b>&nbsp;<span class="switch on"></span></div>
+   </div>
+   <div class="h2">Security</div>
+   <div class="card">
+    <div class="txt">Certificate fingerprint · <span class="kbd">SHA-256: 3a:f2:…:91:e4</span></div>
+    <div class="row" style="border:0"><span class="btn">Regenerate certificate</span>&nbsp;<span class="btn" style="color:var(--bad)">Reset trust store</span></div>
+   </div>
+  </div>
+ </div></div>
+
+<!-- R10: Logs -->
+<div class="screen"><div class="cap">R10 · Logs</div>
+ <div class="app">
+  <div class="sidebar"><div class="brand">⌨ KBM Remote</div>
+   <div class="nav">Dashboard</div><div class="nav">Devices</div><div class="nav">Pairing</div><div class="nav">Permissions</div><div class="nav">Settings</div><div class="nav on">Logs</div>
+  </div>
+  <div class="content">
+   <div class="h1">Activity log</div>
+   <div style="display:flex;gap:6px;margin-bottom:8px">
+    <span class="btn sm p">All</span><span class="btn sm">Connections</span><span class="btn sm">Input</span><span class="btn sm">Security</span><span class="btn sm">System</span><span class="link" style="margin-left:auto">Export</span>
+   </div>
+   <div class="logline"><span style="color:var(--ok)">OK</span> 15:01:44 · Raj's iPhone connected (TLS pinned)</div>
+   <div class="logline"><span style="color:var(--warn)">WARN</span> 14:58:02 · Pixel 8 latency spike: 84ms avg over 10s</div>
+   <div class="logline"><span style="color:var(--ok)">OK</span> 14:32:11 · Pairing approved: Raj's iPhone → 192.168.1.27</div>
+   <div class="logline"><span style="color:var(--bad)">DENY</span> 14:29:55 · Unknown device 192.168.1.99 attempted pairing (revoked cert)</div>
+   <div class="logline"><span style="color:var(--mid)">INFO</span> 14:00:01 · mDNS service published on _kbmremote._tcp.local</div>
+   <div class="logline"><span style="color:var(--mid)">INFO</span> 14:00:00 · Receiver started · Electron 32 · input provider: nut.js</div>
+   <div class="txt" style="margin-top:8px">Logs are stored locally only; nothing is sent externally.</div>
+  </div>
+ </div></div>
+
+<!-- R11: Tray menu -->
+<div class="screen"><div class="cap">R11 · Tray / Menu bar</div>
+ <div class="pad">
+  <div style="border:1px solid var(--line);border-radius:10px;background:#FBFBFC;padding:10px;max-width:260px;box-shadow:0 6px 18px rgba(0,0,0,.08)">
+   <div style="font-weight:800;font-size:12px;padding:2px 4px">⌨ KBM Remote</div>
+   <div class="row" style="border:0;padding:6px 4px"><span class="pill ok">● Online</span>&nbsp;<span class="txt">2 connected</span></div>
+   <div class="row" style="border:0;padding:6px 4px"><span class="avatar">📱</span><b>Raj's iPhone</b>&nbsp;<span class="txt">12ms</span></div>
+   <div class="row" style="border:0;padding:6px 4px;border-bottom:1px solid var(--line)"><span class="avatar">🤖</span><b>Pixel 8</b>&nbsp;<span class="txt">9ms</span></div>
+   <div style="font-size:10px;padding:4px;color:var(--accent);font-weight:700">Show dashboard</div>
+   <div style="font-size:10px;padding:4px;color:var(--accent);font-weight:700">Pair new device…</div>
+   <div style="font-size:10px;padding:4px;color:var(--accent);font-weight:700;border-bottom:1px solid var(--line)">Quick actions: lock screen · media next</div>
+   <div style="font-size:10px;padding:4px;color:var(--mid)">Preferences · Quit</div>
+  </div>
+ </div></div>
+
+<!-- R12: Notifications -->
+<div class="screen"><div class="cap">R12 · Notifications (OS-native)</div>
+ <div class="pad">
+  <div class="notif"><b>Pairing request</b><br><span class="txt">"Pixel 8" wants to connect from 192.168.1.42. Open KBM Remote to approve.</span><br><span class="link">Approve</span>&nbsp;·&nbsp;<span class="link" style="color:var(--bad)">Deny</span></div>
+  <div class="notif" style="border-left-color:var(--bad)"><b>Blocked attempt</b><br><span class="txt">Unknown device 192.168.1.99 tried to pair and was rejected (5 failed attempts this hour).</span></div>
+  <div class="notif" style="border-left-color:var(--ok)"><b>Connected</b><br><span class="txt">Raj's iPhone is now controlling your computer.</span></div>
+ </div></div>
+
+</div>
+</body>
+</html>

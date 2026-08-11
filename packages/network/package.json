@@ -1,0 +1,28 @@
+{
+  "name": "@kbm-remote/network",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Transport layer for KBM Remote — WSS client/server, heartbeat, RTT metrics, reconnection, and discovery abstractions",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint src tests --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@kbm-remote/protocol": "workspace:*",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/ws": "^8.18.1",
+    "eslint": "^8.57.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.1"
+  }
+}

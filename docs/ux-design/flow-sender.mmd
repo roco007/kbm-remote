@@ -1,0 +1,50 @@
+flowchart TB
+  subgraph HOME["Devices tab (home)"]
+    A1["Launch app"] --> A2["Devices list<br/>paired receivers + status"]
+    A2 --> A3{"Discover receivers"}
+    A3 -- "mDNS scan results" --> A4["Found device card"]
+    A3 -- "no multicast" --> A5["Enter IP manually"]
+    A4 --> P1["Pairing modal<br/>QR scan / enter 8-char code"]
+    A5 --> P1
+    P1 -- "code + cert fingerprint pinned" --> P2{"Trust OK?"}
+    P2 -- "yes" --> P3["Connect · handshake on WSS"]
+    P2 -- "fingerprint mismatch" --> P4["Blocked · warning shown<br/>'never accept unseen codes'"]
+    P3 --> A2
+    A2 --> C1{"Select receiver"}
+  end
+
+  subgraph CONTROL["Control surfaces"]
+    C1 -- "quick actions on card" --> T1["Touchpad tab<br/>drag zone + click/scroll/modifiers"]
+    C1 -- "tab bar" --> T1
+    T1 --> T2{"Surface hop shortcuts"}
+    T2 -- "keyboard" --> K1["Keyboard tab<br/>text input · special keys · shortcuts"]
+    T2 -- "media" --> M1["Media tab<br/>play/prev/next · volume · mute"]
+    T2 -- "clipboard" --> F1["Clipboard sheet<br/>synced entries · send to PC"]
+    T2 -- "presentation" --> N1["Presentation mode<br/>full-screen overlay"]
+    K1 --> T1
+    M1 --> T1
+    F1 --> T1
+    N1 --> T1
+  end
+
+  subgraph FEATURES["Feature flows"]
+    A2 --> X1["File transfer<br/>from Devices context"]
+    X1 --> X2["Pick file category"]
+    X2 --> X3["Send with progress bar"]
+    X3 --> X4["Incoming files · save"]
+    N1 --> N2["Slide preview + notes<br/>prev/next · blank screen<br/>laser pointer · annotate"]
+    N2 --> N1
+  end
+
+  subgraph SETTINGS["Settings tab"]
+    A2 -- "tab bar" --> S1["Settings"]
+    S1 --> S2["Appearance<br/>System / Light / Dark"]
+    S2 --> S3{"Dark mode active"}
+    S3 -- "tokens swapped" --> S3
+    S1 --> S4["Behavior: haptics · smoothing<br/>keep awake · clipboard sync"]
+    S1 --> S5["Touchpad sensitivity"]
+    S1 --> S6["About: connection status<br/>pinned cert · protocol version"]
+  end
+
+  C1 -. "disconnected card" .-> P3
+  A2 -. "auto-reconnect on launch" .-> P3

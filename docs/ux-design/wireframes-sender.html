@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KBM Remote — Sender Wireframes</title>
+<style>
+  :root{--bg:#F4F5F7;--surface:#FFFFFF;--ink:#1A1D23;--mid:#6B7280;--line:#C9CDD4;--accent:#4F6EF7;--ok:#16A34A;--warn:#D97706;--bad:#DC2626}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',Arial,sans-serif;padding:24px}
+  h1{font-size:20px;margin-bottom:4px}
+  .sub{color:var(--mid);font-size:12px;margin-bottom:20px}
+  .grid{display:flex;flex-wrap:wrap;gap:22px;justify-content:center}
+
+  .phone{width:232px;border-radius:24px;overflow:hidden;border:1.5px solid #B9BEC7;background:var(--surface);box-shadow:0 10px 28px rgba(0,0,0,.08);display:flex;flex-direction:column}
+  .cap{font-size:10px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.08em;padding:8px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .cap span{color:var(--accent)}
+  .statusbar{height:18px;display:flex;align-items:center;justify-content:space-between;font-size:8px;padding:0 14px;color:var(--mid)}
+  .screen{flex:1;padding:10px;font-size:9px}
+
+  .h1{font-size:13px;font-weight:700;margin-bottom:2px}
+  .txt{color:var(--mid);line-height:1.35}
+  .card{border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:7px}
+  .pill{display:inline-block;font-size:8px;font-weight:700;border-radius:999px;padding:2px 7px}
+  .ok{background:#E4F5EA;color:var(--ok);border:1px solid var(--ok)}
+  .warn{background:#FEF3E1;color:var(--warn);border:1px solid var(--warn)}
+  .btn{display:inline-block;font-size:9px;font-weight:700;border-radius:999px;padding:6px 12px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+  .btn.p{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.sm{padding:4px 9px;font-size:8px}
+  .input{border:1px solid var(--line);border-radius:10px;padding:7px 9px;font-size:9px;color:var(--mid);background:#FBFBFC}
+  .row{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid #F0F1F3;font-size:9px}
+  .avatar{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+  .code{font-family:monospace;font-size:12px;letter-spacing:.2em;font-weight:700;text-align:center;padding:4px;border:1px dashed var(--line);border-radius:8px;background:#FBFBFC}
+  .switch{width:24px;height:13px;border-radius:999px;background:var(--line);position:relative;display:inline-block;flex-shrink:0}
+  .switch::after{content:'';position:absolute;left:2px;top:2px;width:9px;height:9px;border-radius:50%;background:#fff}
+  .switch.on{background:var(--accent)}
+  .switch.on::after{left:13px}
+
+  /* tab bar */
+  .tabs{height:42px;border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;background:#FAFBFC;font-size:7px;color:var(--mid);padding-top:3px}
+  .tab{text-align:center;width:44px}
+  .tab.on{color:var(--accent);font-weight:700}
+  .tab .ic{font-size:12px;display:block}
+
+  /* touchpad */
+  .padzone{flex:1;border:1.5px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--mid);gap:4px}
+  .padbtns{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;margin-top:6px}
+  .key{border:1px solid var(--line);border-radius:8px;text-align:center;padding:5px 0;font-size:8px;background:#fff;color:var(--ink)}
+
+  /* keyboard */
+  .kbrow{display:flex;gap:3px;margin-bottom:3px;justify-content:center}
+  .k{flex:1;border:1px solid var(--line);border-radius:5px;text-align:center;padding:4px 0;font-size:7px;background:#fff;min-width:0}
+  .k.space{flex:4}
+  .kbd{display:inline-block;font-family:monospace;font-size:8px;border:1px solid var(--line);border-radius:4px;padding:1px 4px;background:#F7F8FA}
+
+  /* media */
+  .bigplay{width:52px;height:52px;border-radius:50%;border:2px solid var(--accent);margin:8px auto;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .volslider{height:8px;background:#E9EBEF;border-radius:4px;margin:8px 0 4px;position:relative}
+  .volslider i{position:absolute;left:0;top:0;bottom:0;width:65%;background:var(--accent);border-radius:4px}
+
+  /* QR modal */
+  .modalbg{background:#F4F5F7;border-radius:24px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px}
+  .qr{width:90px;height:90px;border:1px solid var(--line);background:repeating-linear-gradient(45deg,#fff,#fff 6px,#D9DCE2 6px,#D9DCE2 8px);margin:8px auto}
+
+  /* clipboard */
+  .clipitem{display:flex;gap:6px;border:1px solid var(--line);border-radius:8px;padding:6px;margin-bottom:5px;align-items:flex-start}
+  .clipitem b{display:block;font-size:9px}
+  .clipitem span{color:var(--mid);font-size:8px}
+
+  /* presentation */
+  .presbar{display:flex;justify-content:space-around;padding:6px 0;border-top:1px solid var(--line);font-size:8px}
+
+  /* dark phone */
+  .dark{--surface:#121419;--ink:#E8EBF1;--mid:#8B93A3;--line:#2A2F3A}
+  .dark .phone{background:#181B22;border-color:#2A2F3A}
+  .dark .card{background:#1B1F27}
+  .dark .btn{background:#232730;color:var(--ink)}
+  .dark .btn.p{background:var(--accent)}
+  .dark .input{background:#15181E;color:var(--mid)}
+  .dark .kbd,.dark .k{background:#232730;color:var(--ink)}
+  .dark .tabs{background:#15181E}
+  .dark .code{background:#15181E}
+</style>
+</head>
+<body>
+<h1>KBM Remote — Mobile Sender</h1>
+<div class="sub">Low-fidelity wireframes · 390×844 phone concept · light theme; last column shows the same app in dark mode (token swap only)</div>
+<div class="grid">
+
+<!-- S1: Devices home -->
+<div class="phone"><div class="cap">S1 · Devices <span>home tab</span></div>
+ <div class="statusbar"><span>9:41</span><span>●● 98%</span></div>
+ <div class="screen">
+  <div class="h1">My receivers</div>
+  <div class="txt" style="margin-bottom:7px">2 paired · local network</div>
+  <div class="card"><div class="row" style="border:0"><span class="avatar">🖥</span><div style="flex:1"><b>My PC — Office</b><br><span class="txt">192.168.1.10 · 12ms</span></div><span class="pill ok">Connected</span></div>
+   <div style="display:flex;gap:5px;margin-top:6px"><span class="btn sm p">Touchpad</span><span class="btn sm">Keyboard</span><span class="btn sm">Media</span></div></div>
+  <div class="card"><div class="row" style="border:0"><span class="avatar">🖥</span><div style="flex:1"><b>Work Laptop</b><br><span class="txt">192.168.1.25 · offline</span></div><span class="btn sm">Reconnect</span></div></div>
+  <div class="h1" style="margin-top:8px">Discover</div>
+  <div class="card" style="text-align:center"><div class="txt">Scanning… 3 devices found via mDNS</div><div style="margin-top:6px"><span class="btn">Pair new receiver</span></div></div>
+  <div class="txt" style="margin-top:6px;text-align:center">Or <b style="color:var(--accent)">enter IP manually</b></div>
+ </div>
+ <div class="tabs"><div class="tab on"><span class="ic">📟</span>Devices</div><div class="tab"><span class="ic">🖱</span>Touchpad</div><div class="tab"><span class="ic">⌨</span>Keys</div><div class="tab"><span class="ic">🎵</span>Media</div><div class="tab"><span class="ic">⚙</span>Settings</div></div>
+</div>
+
+<!-- S2: Pairing modal -->
+<div class="phone"><div class="cap">S2 · Pairing <span>modal</span></div>
+ <div class="statusbar"><span>9:42</span><span>●● 98%</span></div>
+ <div class="modalbg">
+  <div class="h1" style="font-size:15px">Pair with a receiver</div>
+  <div class="txt" style="margin:4px 0 8px">Scan the QR code shown on the computer, or enter the pairing code.</div>
+  <div class="qr"></div>
+  <div class="txt">Camera permission enables scanning</div>
+  <div style="margin:8px 0;width:100%"><div class="input" style="text-align:center">— or enter code —</div>
+   <div class="code">8 3 K Q 7 P M 2</div></div>
+  <div style="width:100%"><span class="btn p" style="width:100%;text-align:center">Connect</span></div>
+  <div class="txt" style="margin-top:10px;font-size:8px">TLS certificate fingerprint will be pinned from this code. Never accept a code you didn't see on the computer's screen.</div>
+ </div>
+ <div class="tabs"><div class="tab"><span class="ic">📟</span>Devices</div><div class="tab on"><span class="ic">🖱</span>Touchpad</div><div class="tab"><span class="ic">⌨</span>Keys</div><div class="tab"><span class="ic">🎵</span>Media</div><div class="tab"><span class="ic">⚙</span>Settings</div></div>
+</div>
+
+<!-- S3: Touchpad -->
+<div class="phone"><div class="cap">S3 · Touchpad <span>primary control</span></div>
+ <div class="statusbar"><span>9:44</span><span>●● 97%</span></div>
+ <div class="screen" style="display:flex;flex-direction:column">
+  <div class="row" style="border:0;padding-bottom:4px"><span class="avatar">🖥</span><div style="flex:1"><b>My PC — Office</b></div><span class="pill ok">12ms</span><span style="font-size:8px;color:var(--accent)">▼</span></div>
+  <div class="padzone" style="flex:1">
+   <span style="font-size:24px">↔</span>
+   <span class="txt">Drag to move cursor</span>
+   <span class="txt" style="font-size:8px">Tap = left click · two-finger tap = right click</span>
+  </div>
+  <div class="padbtns">
+   <div class="key">Left click</div><div class="key">Right click</div><div class="key">Middle</div><div class="key">Scroll ⇅</div>
+   <div class="key">⌘</div><div class="key">Ctrl</div><div class="key">⇧</div><div class="key">Esc</div>
+  </div>
+  <div style="display:flex;gap:5px;margin-top:6px"><span class="btn sm">⇧ Keyboard</span><span class="btn sm">🎵 Media</span><span class="btn sm">📋 Clipboard</span><span class="btn sm">🖥 Presentation</span></div>
+ </div>
+ <div class="tabs"><div class="tab"><span class="ic">📟</span>Devices</div><div class="tab on"><span class="ic">🖱</span>Touchpad</div><div class="tab"><span class="ic">⌨</span>Keys</div><div class="tab"><span class="ic">🎵</span>Media</div><div class="tab"><span class="ic">⚙</span>Settings</div></div>
+</div>
+
+<!-- S4: Keyboard -->
+<div class="phone"><div class="cap">S4 · Keyboard</div>
+ <div class="statusbar"><span>9:45</span><span>●● 97%</span></div>
+ <div class="screen">
+  <div class="row" style="border:0;padding-bottom:4px"><b>Text input</b>&nbsp;<span style="color:var(--accent);margin-left:auto">⌨ on-screen → PC</span></div>
+  <div class="input" style="margin-bottom:7px">Cursor is on the receiver — type anything…</div>
+  <div class="h1">Special keys</div>
+  <div class="card" style="display:flex;flex-wrap:wrap;gap:5px">
+   <span class="kbd">Enter</span><span class="kbd">Tab</span><span class="kbd">Esc</span><span class="kbd">Space</span><span class="kbd">Backspace</span><span class="kbd">Delete</span><span class="kbd">↑↓←→</span>
+  </div>
+  <div class="h1">Shortcuts</div>
+  <div class="card"><div class="row" style="border:0"><span>Ctrl + C</span><span class="btn sm" style="margin-left:auto">Send</span></div>
+   <div class="row" style="border:0"><span>Ctrl + V</span><span class="btn sm" style="margin-left:auto">Send</span></div>
+   <div class="row" style="border:0"><span>Alt + Tab</span><span class="btn sm" style="margin-left:auto">Send</span></div>
+   <div class="row" style="border:0"><span>Ctrl + Shift + Esc</span><span class="btn sm" style="margin-left:auto">Send</span></div>
+   <div class="row" style="border:0"><span>⊕ Add custom shortcut…</span></div></div>
+  <div class="h1">Hold modifiers</div>
+  <div class="card" style="text-align:center"><span class="kbd">Ctrl</span>&nbsp;<span class="kbd">Alt</span>&nbsp;<span class="kbd">Shift</span>&nbsp;<span class="kbd">⌘/Win</span>&nbsp;<span class="txt">— hold to combine with on-screen typing</span></div>
+ </div>
+ <div class="tabs"><div class="tab"><span class="ic">📟</span>Devices</div><div class="tab"><span class="ic">🖱</span>Touchpad</div><div class="tab on"><span class="ic">⌨</span>Keys</div><div class="tab"><span class="ic">🎵</span>Media</div><div class="tab"><span class="ic">⚙</span>Settings</div></div>
+</div>
+
+<!-- S5: Media -->
+<div class="phone"><div class="cap">S5 · Media controls</div>
+ <div class="statusbar"><span>9:46</span><span>●● 96%</span></div>
+ <div class="screen" style="text-align:center">
+  <div class="txt" style="text-align:center">Controlling · <b style="color:var(--ink)">My PC — Office</b></div>
+  <div style="font-size:8px;color:var(--mid);text-align:center">Now playing: nothing focused</div>
+  <div style="display:flex;justify-content:space-around;margin:12px 0 4px">
+   <div style="text-align:center"><span style="font-size:18px">◀◀</span><br><span class="txt">Previous</span></div>
+   <div class="bigplay">▶</div>
+   <div style="text-align:center"><span style="font-size:18px">▶▶</span><br><span class="txt">Next</span></div>
+  </div>
+  <div class="txt" style="text-align:center">Play / Pause</div>
+  <div class="h1" style="text-align:left;margin-top:10px">Volume</div>
+  <div class="card" style="text-align:left">
+   <div class="row" style="border:0"><span>🔊</span><div style="flex:1"><div class="volslider"><i></i></div></div><span class="btn sm">65%</span></div>
+   <div class="row" style="border:0"><span>🔇</span><span style="flex:1" class="txt">Mute</span><span class="switch on"></span></div>
+  </div>
+  <div class="h1" style="text-align:left">Quick actions</div>
+  <div class="card"><div class="row" style="border:0"><span>Lock computer</span><span class="btn sm" style="margin-left:auto">Send</span></div>
+   <div class="row" style="border:0"><span>Sleep</span><span class="btn sm" style="margin-left:auto">Send</span></div>
+   <div class="row" style="border:0;border:0"><span>Open media player</span><span class="btn sm" style="margin-left:auto">Send</span></div></div>
+ </div>
+ <div class="tabs"><div class="tab"><span class="ic">📟</span>Devices</div><div class="tab"><span class="ic">🖱</span>Touchpad</div><div class="tab"><span class="ic">⌨</span>Keys</div><div class="tab on"><span class="ic">🎵</span>Media</div><div class="tab"><span class="ic">⚙</span>Settings</div></div>
+</div>
+
+<!-- S6: Presentation -->
+<div class="phone"><div class="cap">S6 · Presentation mode <span>full-screen overlay</span></div>
+ <div class="statusbar"><span>9:50</span><span>●● 95%</span></div>
+ <div class="screen" style="text-align:center">
+  <div style="width:208px;height:120px;border:1.5px solid var(--line);border-radius:10px;margin:6px auto;display:flex;align-items:center;justify-content:center;color:var(--mid);font-size:10px">Slide preview<br>(sent over WSS)</div>
+  <div class="txt">Slide 7 / 24 · PowerPoint</div>
+  <div style="display:flex;justify-content:center;gap:10px;margin:10px 0">
+   <div style="border:1.5px solid var(--line);border-radius:14px;width:54px;height:54px;display:flex;align-items:center;justify-content:center;font-size:18px">◀</div>
+   <div style="border:1.5px solid var(--accent);border-radius:14px;width:54px;height:54px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--accent)">▶</div>
+  </div>
+  <div class="presbar">
+   <span>🔲 Blank screen</span><span>🔦 Laser pointer</span><span>🖊 Annotate</span><span>⏱ Timer</span>
+  </div>
+  <div class="card"><div class="row" style="border:0"><span>Notes for this slide</span></div><div class="txt">• Revenue grew 24% YoY<br>• New markets: APAC, LATAM</div></div>
+ </div>
+</div>
+
+<!-- S7: File transfer -->
+<div class="phone"><div class="cap">S7 · File transfer</div>
+ <div class="statusbar"><span>9:52</span><span>●● 94%</span></div>
+ <div class="screen">
+  <div class="h1">Send to My PC — Office</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:8px 0">
+   <div class="card" style="text-align:center;margin:0"><span style="font-size:16px">📄</span><br><span class="txt">Documents</span></div>
+   <div class="card" style="text-align:center;margin:0"><span style="font-size:16px">🖼</span><br><span class="txt">Photos</span></div>
+   <div class="card" style="text-align:center;margin:0"><span style="font-size:16px">📁</span><br><span class="txt">Any file</span></div>
+  </div>
+  <div class="h1">Transfer</div>
+  <div class="card"><div class="row" style="border:0"><span class="avatar">📄</span><div style="flex:1"><b>Q4-report.pdf</b><br><span class="txt">2.4 MB · sending…</span></div><span class="txt">71%</span></div>
+   <div class="bar" style="height:6px;background:#E9EBEF;border-radius:3px"><i style="display:block;width:71%;height:100%;background:var(--accent);border-radius:3px"></i></div></div>
+  <div class="h1">Incoming</div>
+  <div class="card"><div class="row" style="border:0"><span class="avatar">🖥</span><div style="flex:1"><b>screenshots.zip</b><br><span class="txt">18 MB · from My PC</span></div><span class="btn sm p">Save</span></div></div>
+ </div>
+</div>
+
+<!-- S8: Clipboard -->
+<div class="phone"><div class="cap">S8 · Clipboard</div>
+ <div class="statusbar"><span>9:53</span><span>●● 94%</span></div>
+ <div class="screen">
+  <div class="h1">Clipboard — PC</div>
+  <div class="txt" style="margin-bottom:7px">Live sync with My PC — Office · 3 entries</div>
+  <div class="clipitem"><div style="width:16px;color:var(--accent)">📋</div><div style="flex:1"><b>https://github.com/…/pull/1284</b><br><span>just now · tap to send to PC</span></div></div>
+  <div class="clipitem"><div style="width:16px;color:var(--accent)">📋</div><div style="flex:1"><b>Meeting notes — sync agenda…</b><br><span>2 min ago · tap to send to PC</span></div></div>
+  <div class="clipitem"><div style="width:16px;color:var(--accent)">🖼</div><div style="flex:1"><b>🖼 screenshot.png</b><br><span>12 min ago · tap to send to PC</span></div></div>
+  <div style="display:flex;gap:6px"><span class="btn">📥 Pull from PC</span><span class="btn p">⬆ Send selection</span></div>
+ </div>
+</div>
+
+<!-- S9: Settings light -->
+<div class="phone"><div class="cap">S9 · Settings <span>light</span></div>
+ <div class="statusbar"><span>9:55</span><span>●● 93%</span></div>
+ <div class="screen">
+  <div class="h1">Settings</div>
+  <div class="h1">Appearance</div>
+  <div class="card"><div class="row" style="border:0"><span>Theme</span><span class="btn sm" style="margin-left:auto">System</span>&nbsp;<span class="btn sm">Light</span>&nbsp;<span class="btn sm">Dark</span></div></div>
+  <div class="h1">Behavior</div>
+  <div class="card">
+   <div class="row" style="border:0"><span>Haptic feedback on tap-to-click</span><span class="switch on"></span></div>
+   <div class="row" style="border:0"><span>Motion smoothing (relative input)</span><span class="switch on"></span></div>
+   <div class="row" style="border:0"><span>Keep screen awake during session</span><span class="switch on"></span></div>
+   <div class="row" style="border:0"><span>Clipboard sync</span><span class="switch"></span></div>
+  </div>
+  <div class="h1">Touchpad sensitivity</div>
+  <div class="card"><div class="row" style="border:0"><span>Speed</span><span class="btn sm">Medium</span></div>
+   <div class="row" style="border:0"><span>Acceleration curve</span><span class="btn sm">Default</span></div></div>
+  <div class="h1">About</div>
+  <div class="card"><div class="txt">KBM Remote Sender 1.0<br>Connected: My PC — Office (pinned cert ✓)<br>Protocol v1 · WSS + MessagePack</div></div>
+ </div>
+ <div class="tabs"><div class="tab"><span class="ic">📟</span>Devices</div><div class="tab"><span class="ic">🖱</span>Touchpad</div><div class="tab"><span class="ic">⌨</span>Keys</div><div class="tab"><span class="ic">🎵</span>Media</div><div class="tab on"><span class="ic">⚙</span>Settings</div></div>
+</div>
+
+<!-- S10: Settings dark -->
+<div class="phone"><div class="cap">S10 · Settings <span>dark</span></div>
+ <div class="statusbar"><span>9:55</span><span>●● 93%</span></div>
+ <div class="screen">
+  <div class="h1">Settings</div>
+  <div class="h1">Appearance</div>
+  <div class="card"><div class="row" style="border:0"><span>Theme</span><span class="btn sm" style="margin-left:auto">System</span>&nbsp;<span class="btn sm">Light</span>&nbsp;<span class="btn sm p">Dark</span></div></div>
+  <div class="h1">Behavior</div>
+  <div class="card">
+   <div class="row" style="border:0"><span>Haptic feedback on tap-to-click</span><span class="switch on"></span></div>
+   <div class="row" style="border:0"><span>Motion smoothing (relative input)</span><span class="switch on"></span></div>
+   <div class="row" style="border:0"><span>Keep screen awake during session</span><span class="switch on"></span></div>
+   <div class="row" style="border:0"><span>Clipboard sync</span><span class="switch"></span></div>
+  </div>
+  <div class="h1">Touchpad sensitivity</div>
+  <div class="card"><div class="row" style="border:0"><span>Speed</span><span class="btn sm">Medium</span></div>
+   <div class="row" style="border:0"><span>Acceleration curve</span><span class="btn sm">Default</span></div></div>
+  <div class="h1">About</div>
+  <div class="card"><div class="txt">KBM Remote Sender 1.0<br>Connected: My PC — Office (pinned cert ✓)<br>Protocol v1 · WSS + MessagePack</div></div>
+ </div>
+ <div class="tabs"><div class="tab"><span class="ic">📟</span>Devices</div><div class="tab"><span class="ic">🖱</span>Touchpad</div><div class="tab"><span class="ic">⌨</span>Keys</div><div class="tab"><span class="ic">🎵</span>Media</div><div class="tab on"><span class="ic">⚙</span>Settings</div></div>
+</div>
+
+<!-- S11: Touchpad dark -->
+<div class="phone"><div class="cap">S11 · Touchpad <span>dark</span></div>
+ <div class="statusbar"><span>9:56</span><span>●● 92%</span></div>
+ <div class="screen" style="display:flex;flex-direction:column">
+  <div class="row" style="border:0;padding-bottom:4px"><span class="avatar">🖥</span><div style="flex:1"><b>My PC — Office</b></div><span class="pill ok">11ms</span><span style="font-size:8px;color:var(--accent)">▼</span></div>
+  <div class="padzone" style="flex:1">
+   <span style="font-size:24px">↔</span>
+   <span class="txt">Drag to move cursor</span>
+  </div>
+  <div class="padbtns">
+   <div class="key">Left click</div><div class="key">Right click</div><div class="key">Middle</div><div class="key">Scroll ⇅</div>
+   <div class="key">⌘</div><div class="key">Ctrl</div><div class="key">⇧</div><div class="key">Esc</div>
+  </div>
+  <div style="display:flex;gap:5px;margin-top:6px"><span class="btn sm">⇧ Keyboard</span><span class="btn sm">🎵 Media</span><span class="btn sm">📋 Clipboard</span><span class="btn sm">🖥 Presentation</span></div>
+ </div>
+ <div class="tabs"><div class="tab"><span class="ic">📟</span>Devices</div><div class="tab on"><span class="ic">🖱</span>Touchpad</div><div class="tab"><span class="ic">⌨</span>Keys</div><div class="tab"><span class="ic">🎵</span>Media</div><div class="tab"><span class="ic">⚙</span>Settings</div></div>
+</div>
+
+</div>
+</body>
+</html>

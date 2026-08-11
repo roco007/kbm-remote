@@ -1,0 +1,59 @@
+flowchart TB
+  subgraph FIRST["First run"]
+    A1["Launch app"] --> A2["Onboarding: Welcome (1/4)"]
+    A2 --> A3["Onboarding: System permissions (2/4)"]
+    A3 --> A4["Onboarding: Firewall allow (3/4)"]
+    A4 --> A5["Onboarding: You're all set (4/4)"]
+    A5 --> B1["Dashboard"]
+  end
+
+  subgraph SHELL["Receiver shell (Electron + tray)"]
+    B1["Dashboard<br/>sessions · latency · status"]
+    T1["System tray / menu bar<br/>status · quick actions"]
+  end
+
+  subgraph PAIR["Pairing flow"]
+    T1 -- "Pair new device…" --> C1["Pairing screen<br/>QR code + 8-char code"]
+    B1 -- "sidebar → Pairing" --> C1
+    C1 -- "code expires / manual refresh" --> C2["Regenerate code"]
+    C2 --> C1
+    C1 -- "device submits code" --> C3{"Pairing request<br/>received"}
+    C3 -- "approve" --> C4["Trusted device created<br/>+ desktop notification"]
+    C3 -- "deny / expired" --> C5["Request dropped<br/>rate-limited if repeated"]
+    C5 -- "5 failed / hour → lockout + notify" --> C1
+    C4 --> C6["Pending requests list<br/>approve / deny"]
+    C6 --> B1
+  end
+
+  subgraph MGMT["Device management"]
+    B1 -- "sidebar → Devices" --> D1["Trusted devices table"]
+    D1 --> D2["Device detail sheet<br/>per-device permission switches"]
+    D2 --> D3["Edit permissions / Revoke"]
+    D3 -- "revoke" --> D4["Revoked state<br/>restore possible"]
+    D4 --> D1
+    D1 -- "Revoke all" --> D4
+  end
+
+  subgraph POLICY["Policy & safety"]
+    B1 -- "sidebar → Permissions" --> E1["Global permissions<br/>default policy + safety limits"]
+    E1 --> B1
+  end
+
+  subgraph CONFIG["Configuration"]
+    B1 -- "sidebar → Settings" --> F1["Settings: general · network ·<br/>theme · security"]
+    F1 -- "regenerate certificate" --> F2["Re-issue TLS cert<br/>fingerprint changes"]
+    F2 --> B1
+    F1 --> B1
+  end
+
+  subgraph OBSERVE["Observability"]
+    B1 -- "sidebar → Logs" --> G1["Activity log<br/>connections · input · security"]
+    G1 -- "filter / export" --> G1
+    C3 -. "OS notification" .-> H1["Desktop notifications<br/>pairing requests · blocks · connects"]
+    H1 -- "open app" --> C6
+    G1 --> B1
+  end
+
+  T1 -- "Show dashboard" --> B1
+  C3 -. "even when app hidden" .-> H1
+  A1 -. "after first run" .-> T1

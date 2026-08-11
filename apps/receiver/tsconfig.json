@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "composite": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true
+  },
+  "references": [
+    { "path": "../../packages/protocol" },
+    { "path": "../../packages/network" },
+    { "path": "../../packages/auth" },
+    { "path": "../../packages/input-provider" },
+    { "path": "../../packages/ui-components" }
+  ],
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}

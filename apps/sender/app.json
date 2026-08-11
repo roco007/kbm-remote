@@ -1,0 +1,8 @@
+{
+  "android": {
+    "package": "com.anonymous.kbmremotesender"
+  },
+  "ios": {
+    "bundleIdentifier": "com.anonymous.kbmremotesender"
+  }
+}

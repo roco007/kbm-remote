@@ -1,0 +1,37 @@
+{
+  "name": "@kbm-remote/receiver",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KBM Remote desktop receiver — Electron shell hosting a NestJS server (per Architecture §2.2)",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint src tests --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start": "electron dist/main/main.js",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@kbm-remote/protocol": "workspace:*",
+    "@kbm-remote/network": "workspace:*",
+    "@kbm-remote/auth": "workspace:*",
+    "@kbm-remote/input-provider": "workspace:*",
+    "@kbm-remote/ui-components": "workspace:*",
+    "electron": "^36.2.1",
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/websockets": "^11.1.6",
+    "@nestjs/platform-socket.io": "^11.1.6",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "eslint": "^8.57.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.1"
+  }
+}
