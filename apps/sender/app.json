@@ -1,8 +1,28 @@
 {
-  "android": {
-    "package": "com.anonymous.kbmremotesender"
-  },
-  "ios": {
-    "bundleIdentifier": "com.anonymous.kbmremotesender"
+  "expo": {
+    "name": "KBM Remote",
+    "slug": "kbm-remote-sender",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android"],
+    "newArchEnabled": true,
+    "sdkVersion": "53.0.0",
+    "jsEngine": "hermes",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F8FA"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "bundleIdentifier": "com.kbmremote.sender",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.kbmremote.sender",
+      "adaptiveIcon": {
+        "backgroundColor": "#F7F8FA"
+      }
+    }
   }
 }

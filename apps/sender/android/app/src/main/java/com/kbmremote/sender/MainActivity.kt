@@ -1,4 +1,4 @@
-package com.anonymous.kbmremotesender
+package com.kbmremote.sender
 
 import android.os.Build
 import android.os.Bundle
