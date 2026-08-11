@@ -1,7 +1,14 @@
 /**
- * WSS client: connection lifecycle, auth handshake, heartbeat,
+ * WSS client barrel — connection lifecycle, auth handshake, heartbeat,
  * exponential-backoff reconnection (Protocol Spec §5.4, §6.3).
- *
- * TODO (M2): implement.
  */
-export const CLIENT_PLACEHOLDER = true;
+
+export {
+  ClientConnection,
+  type ClientEvents,
+  type ClientOptions,
+  type ClientSocket,
+  type ClientState,
+  type FrameResult,
+  type PendingFrame,
+} from "./ClientConnection";

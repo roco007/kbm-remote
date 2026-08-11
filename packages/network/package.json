@@ -16,13 +16,16 @@
   },
   "dependencies": {
     "@kbm-remote/protocol": "workspace:*",
+    "selfsigned": "^5.5.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@msgpack/msgpack": "^3.0.1",
     "@types/node": "^22.15.0",
     "@types/ws": "^8.18.1",
     "eslint": "^8.57.1",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.1"
+    "vitest": "^3.2.1",
+    "ws": "^8.18.3"
   }
 }
