@@ -81,7 +81,7 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           draft: true
-          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == true }}
           generate_release_notes: true
           files: release/**/*
         env:
