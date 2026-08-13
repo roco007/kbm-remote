@@ -1,0 +1,46 @@
+appId: com.kbmremote.receiver
+productName: KBM Remote Receiver
+
+copyright: Copyright © 2026 KBM Remote authors
+
+files:
+  - "dist/**"
+  - "package.json"
+
+directories:
+  output: dist/release
+
+extraMetadata:
+  name: kbm-remote-receiver
+
+win:
+  target:
+    - target: nsis
+    - target: portable
+  icon: build/icon.ico # optional; electron-builder uses a default if absent
+  artifactName: ${productName}-${version}-Setup.${ext}
+
+mac:
+  target:
+    - target: dmg
+    - target: zip
+  category: public.app-category.utilities
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+linux:
+  target:
+    - target: AppImage
+    - target: deb
+  category: Utility
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+publish:
+  provider: generic
+  url: https://github.com/roco007/kbm-remote/releases

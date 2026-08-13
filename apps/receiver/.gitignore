@@ -1,1 +1,4 @@
 tls/
+release/
+app.asar
+*.log

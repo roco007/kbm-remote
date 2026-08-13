@@ -1,9 +1,9 @@
 {
   "name": "@kbm-remote/receiver",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "KBM Remote desktop receiver — Electron shell hosting a NestJS server (per Architecture §2.2)",
-  "main": "dist/main/main.js",
+  "main": "dist/src/main/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node esbuild.renderer.mjs && cp src/renderer/index.html dist/renderer/index.html",
     "dev": "tsc -p tsconfig.build.json --watch & node esbuild.renderer.mjs --watch",
@@ -11,9 +11,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "electron dist/main/main.js",
+    "start": "electron dist/src/main/index.js",
     "clean": "rm -rf dist .turbo",
-    "bench:bundle": "node scripts/bundle-analysis.mjs"
+    "bench:bundle": "node scripts/bundle-analysis.mjs",
+    "dist": "electron-builder --config electron-builder.yml"
   },
   "dependencies": {
     "@kbm-remote/auth": "workspace:*",
@@ -25,7 +26,6 @@
     "@nestjs/core": "^11.1.6",
     "@nestjs/platform-socket.io": "^11.1.6",
     "@nestjs/websockets": "^11.1.6",
-    "electron": "^42.9.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -44,6 +44,14 @@
     "typescript": "^5.8.3",
     "vitest": "^3.2.1",
     "ws": "^8.18.0",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.3",
+    "electron-builder": "^26.0.0",
+    "electron": "^42.9.0"
+  },
+  "homepage": "https://github.com/roco007/kbm-remote",
+  "author": {
+    "name": "KBM Remote authors",
+    "email": "roco007@users.noreply.github.com",
+    "url": "https://github.com/roco007/kbm-remote"
   }
 }

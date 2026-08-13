@@ -1,6 +1,6 @@
 {
   "name": "@kbm-remote/auth",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Pure, dependency-free cryptography for KBM Remote — TLS cert generation & fingerprinting, pairing codes, session tokens, RBAC",
   "main": "dist/index.js",

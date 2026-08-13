@@ -1,6 +1,6 @@
 {
   "name": "@kbm-remote/sender",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "KBM Remote mobile sender — Expo (React Native) with screens S1–S11 per the UX Design Document",
   "main": "index.js",

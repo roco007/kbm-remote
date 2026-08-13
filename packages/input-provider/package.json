@@ -1,6 +1,6 @@
 {
   "name": "@kbm-remote/input-provider",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Receiver-side input abstraction — swappable providers (nut.js fork default, native API fallback) behind one interface",
   "main": "dist/index.js",

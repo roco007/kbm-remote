@@ -1,8 +1,8 @@
 {
   "name": "kbm-remote",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "KBM Remote — secure local-network keyboard & mouse emulator (Electron receiver + React Native sender)",
+  "description": "KBM Remote \u2014 secure local-network keyboard & mouse emulator (Electron receiver + React Native sender)",
   "packageManager": "pnpm@10.33.2",
   "engines": {
     "node": ">=20.0.0",
@@ -41,10 +41,12 @@
     "config": {
       "onlyBuiltDependencies": [
         "electron",
-        "esbuild"
+        "esbuild",
+        "msgpackr-extract"
       ]
     },
     "onlyBuiltDependencies": [
+      "electron",
       "esbuild",
       "msgpackr-extract"
     ]
