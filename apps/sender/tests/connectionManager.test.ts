@@ -23,7 +23,7 @@ class FakeReceiver {
 
   constructor() {
     this.server = createServer();
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
     const wsModule = require("ws") as typeof import("ws");
     this.wss = new wsModule.WebSocketServer({ noServer: true });
     this.server.on("upgrade", (req, socket, head) => {

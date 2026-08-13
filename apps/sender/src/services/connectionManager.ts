@@ -60,6 +60,7 @@ export interface ConnectionManagerEvents extends ClientEvents {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 class Emitter<E = Record<string, any>> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly listeners = new Map<string, Set<(...args: any[]) => void>>();
 
   on<K extends keyof E>(event: K, listener: E[K]): () => void {
