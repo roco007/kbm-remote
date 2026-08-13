@@ -38,15 +38,15 @@ The two frame types carry meaning in opposite directions. `ClipboardSync` (0x70)
 // packages/input-provider/src/clipboard.ts
 interface ClipboardProvider {
   readonly name: string;
-  read(): Promise<ClipboardContent | null>;   // null = empty / unreadable
+  read(): Promise<ClipboardContent | null>; // null = empty / unreadable
   write(content: ClipboardContent): Promise<void>;
   clear(): Promise<void>;
 }
 
 interface ClipboardContent {
   readonly kind: "text" | "image";
-  readonly data: string;                      // UTF-8 text, or base64 PNG
-  readonly sha256: string;                    // lowercase hex — change detection
+  readonly data: string; // UTF-8 text, or base64 PNG
+  readonly sha256: string; // lowercase hex — change detection
 }
 ```
 
@@ -56,13 +56,13 @@ A `ClipboardContent` is never constructed directly from untrusted input; it can 
 
 Every inbound payload passes through `normalizeClipboardContent` before it touches the OS clipboard. The rules are deliberately tight: the `kind` must be exactly `"text"` or `"image"`; text is bounded to **64 KB of UTF-8** (a generous paste buffer — clipboard sync is not a file-transfer channel); images are bounded to **8 MB of base64** (roughly 6 MB of decoded PNG) and are required to decode to a **PNG magic header** (`89 50 4E 47`), which cheaply kills most bogus payloads. Base64 decoding itself is length-checked before allocation and never silently truncates — anything over the ceiling throws `clipboardTooLarge` with a machine-readable reason, and malformed encodings throw `invalidBase64`.
 
-| Boundary | Limit | Enforcement |
-|---|---|---|
-| Text payload | 64 KB UTF-8 | `utf8ByteLength` (accounts for 4-byte codepoints) |
-| Image payload | 8 MB base64 | `base64DecodedLength` before decode |
-| Image format | PNG only | magic-byte check after decode |
-| Encoding | standard base64, padding-aware | `/^[A-Za-z0-9+/]*={0,2}$/` |
-| Identity | SHA-256 over decoded bytes | used for dedup and conflict detection |
+| Boundary      | Limit                          | Enforcement                                       |
+| ------------- | ------------------------------ | ------------------------------------------------- |
+| Text payload  | 64 KB UTF-8                    | `utf8ByteLength` (accounts for 4-byte codepoints) |
+| Image payload | 8 MB base64                    | `base64DecodedLength` before decode               |
+| Image format  | PNG only                       | magic-byte check after decode                     |
+| Encoding      | standard base64, padding-aware | `/^[A-Za-z0-9+/]*={0,2}$/`                        |
+| Identity      | SHA-256 over decoded bytes     | used for dedup and conflict detection             |
 
 ## 4. Conflict Resolution
 
@@ -70,12 +70,12 @@ Clipboard sync is the one subsystem in the project where the sender and receiver
 
 The owner machine has three states — `remote` (the last change came from the sender), `local` (the user edited the receiver clipboard after a sync), and `unknown` (initial state). Each incoming write consults `canApplyRemote(currentOsHash)`, which returns a decision rather than mutating anything:
 
-| Current OS hash vs. bookkeeping | Decision |
-|---|---|
-| equals the last synced remote hash | `unchanged` — the sender re-sent identical content; no-op |
-| equals the hash we last wrote remotely | allowed — the OS still holds our write; safe to re-apply (idempotent paste) |
-| anything else, with known remote ownership | `conflict` — the user edited locally; the remote write is dropped |
-| `unknown` ownership | allowed — first sync always applies |
+| Current OS hash vs. bookkeeping            | Decision                                                                    |
+| ------------------------------------------ | --------------------------------------------------------------------------- |
+| equals the last synced remote hash         | `unchanged` — the sender re-sent identical content; no-op                   |
+| equals the hash we last wrote remotely     | allowed — the OS still holds our write; safe to re-apply (idempotent paste) |
+| anything else, with known remote ownership | `conflict` — the user edited locally; the remote write is dropped           |
+| `unknown` ownership                        | allowed — first sync always applies                                         |
 
 When a write is applied, the owner flips to `remote` and records the hash. A local edit flips it to `local`; the user can transparently **restore** the previously synced content by putting the identical bytes back, which the bookkeeper detects through the `restoredHash` parameter and re-allows remote writes for. `ClipboardSync` duplicates are also short-circuited before any provider call via a `lastPushedHash` dedup flag, so a flaky connection that re-sends the same paste twice produces exactly one OS write.
 
@@ -98,11 +98,11 @@ The session token is the high-entropy 256-bit secret established during pairing 
 
 There is no cross-platform clipboard library in the dependency tree; the adapter shells out to tooling present on every desktop OS, which keeps the receiver free of native addons that break on Electron upgrades.
 
-| Platform | Tooling | Text | Image |
-|---|---|---|---|
-| Linux (X11) | `xclip` | `-selection clipboard -o/-i` (stdin) | `-t image/png` round-trip |
-| macOS | `pbcopy` / `pbpaste` / `osascript` | stdin/text via pbcopy/pbpaste | `«class PNGf»` via osascript; write uses a temp PNG + `POSIX file` import |
-| Windows | `powershell.exe -NoProfile` | `Get/Set-Clipboard` | `MemoryStream` PNG encode + `Set-Clipboard -Path` |
+| Platform    | Tooling                            | Text                                 | Image                                                                     |
+| ----------- | ---------------------------------- | ------------------------------------ | ------------------------------------------------------------------------- |
+| Linux (X11) | `xclip`                            | `-selection clipboard -o/-i` (stdin) | `-t image/png` round-trip                                                 |
+| macOS       | `pbcopy` / `pbpaste` / `osascript` | stdin/text via pbcopy/pbpaste        | `«class PNGf»` via osascript; write uses a temp PNG + `POSIX file` import |
+| Windows     | `powershell.exe -NoProfile`        | `Get/Set-Clipboard`                  | `MemoryStream` PNG encode + `Set-Clipboard -Path`                         |
 
 A `NativeClipboardBackend` contract keeps the three implementations behind one adapter surface. Two practical details are worth noting. On Linux, the **primary selection** (middle-click paste) is read as a fallback when the clipboard itself is empty, because remote-control users routinely expect middle-paste content to be visible; image writes pipe base64 through stdin with a 5-second timeout rather than blocking. On Windows, every PowerShell call spawns a fresh `-NoProfile` host (~150 ms per operation), which is acceptable for manual sync and change polling but not for hot loops; single quotes in pasted text are escaped per PowerShell's own rules. The provider **probes lazily** on first use — `xclip` can be missing on minimal X11 installs — and a failed probe throws `bindingsUnavailable` rather than crashing the receiver.
 

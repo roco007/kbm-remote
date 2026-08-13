@@ -1,11 +1,13 @@
 # M4 — React Native sender app: task state
 
 ## User request
+
 React Native mobile sender with pages: Home, Touchpad, Keyboard, Media Controls,
 Clipboard, Presentation Mode, Settings, Pair Device. Material Design 3, smooth
 animations, React Navigation, Zustand, dark mode.
 
 ## Monorepo facts (verified)
+
 - apps/sender already scaffolded: Expo ~53, RN 0.79.2, React 19, package
   "@kbm-remote/sender" with scripts dev/ios/android/build/lint/typecheck/test
   (vitest). src has App.tsx (stub, return null), screens/components/services/store
@@ -26,6 +28,7 @@ animations, React Navigation, Zustand, dark mode.
 - packages/auth: pairing (8-char code, HMAC), session tokens; mostly placeholder.
 
 ## Design decisions for M4
+
 - Stack: Expo SDK 53 (existing), expo-router NOT required — user asked for
   React Navigation (user requirement wins). Use @react-navigation/native +
   @react-navigation/native-stack (stack nav) + optional bottom tabs in Touchpad
@@ -66,6 +69,7 @@ animations, React Navigation, Zustand, dark mode.
   Note limitations in docs.
 
 ## Progress
+
 - [ ] Phase 1 scaffold: add deps (zustand, react-navigation/native, native-stack,
       reanimated? no — use core Animated, react-native-gesture-handler needed for
       navigation) to apps/sender/package.json; pnpm install; configure babel.
@@ -77,8 +81,9 @@ animations, React Navigation, Zustand, dark mode.
 ## Verified API surfaces (for compaction safety)
 
 ### ConnectionManager (apps/sender/src/services/connectionManager.ts, REAL)
+
 - Constructor: `new ConnectionManager({ clientName, clientOs: "android"|"ios",
-  socketFactory, resume?: {sessionId, sessionToken} })`
+socketFactory, resume?: {sessionId, sessionToken} })`
 - Methods: connect(address: {url, source: "mdns"|"manual"|"stored"}),
   disconnect() (graceful), dispose(); getters: state, sessionId, address,
   connectionRef (raw ClientConnection)
@@ -89,12 +94,14 @@ animations, React Navigation, Zustand, dark mode.
   sendReliable(frame) → FrameResult, sessionId.
 
 ### ui-components (packages/ui-components/src/theme)
+
 - lightTheme/darkTheme tokens: bgApp, bgSurface, textPrimary, textSecondary,
   accent (#4F6EF7/#6B84F9), success, warning, danger, border, radiusMd/Lg.
   motion {microMs:200, sheetMs:300, easing}. Barrel also exports
   UI_COMPONENTS_PLACEHOLDER=true.
 
 ### Protocol
+
 - FrameType const keys: MouseMove 0x40, MouseClick 0x41, MouseScroll 0x42,
   MouseDragStart 0x43, MouseDragMove 0x44, MouseDragEnd 0x45, KeyPress 0x50,
   KeyHold 0x51, KeyRelease 0x52, TextInput 0x53, Shortcut 0x54, MediaKey 0x60,
@@ -106,6 +113,7 @@ animations, React Navigation, Zustand, dark mode.
   mDNS NOT implemented — sender app uses manual IP+port entry (document this).
 
 ### Sender app scaffold
+
 - app.json: name "KBM Remote", slug kbm-remote-sender, SDK 53, automatic
   UI style, newArchEnabled, hermes. NO app/index.js entry file exists.
 - Tests: apps/sender/tests/connectionManager.test.ts (real, ws server fake),
@@ -119,6 +127,7 @@ animations, React Navigation, Zustand, dark mode.
   async-storage 2.1.2, expo-keep-awake ~14.1, expo-haptics ~14.1.
 
 ## Plan refinements (from skill)
+
 - Do NOT use expo-router (user wants React Navigation). Entry: index.js +
   App.tsx root. Need GestureHandlerRootView wrapping.
 - No emulator available: verify via tsc typecheck + lint + vitest +
@@ -133,6 +142,7 @@ animations, React Navigation, Zustand, dark mode.
   { t, mid:0, v, ts, p: { direction: "next"|"prev" } }? VERIFY before sending.
 
 ## Verified wire formats (receiver expects) — use these in sender frame payloads
+
 - MouseMove (0x40): p = { x, y, displayIndex? } (absolute normalized) OR
   { dx, dy } (relative). Click (0x41): { button: "left"|"right"|"middle",
   action: "click"|"dblclick"|"down"|"up" }. Scroll (0x42):
@@ -153,6 +163,7 @@ animations, React Navigation, Zustand, dark mode.
   returns FrameResult { ok, ... } (check exact shape if needed; not required).
 
 ## Progress log
+
 - [x] Phase 1: deps installed (zustand, nav, async-storage, keep-awake,
       haptics, gesture-handler, safe-area-context, screens).
 - [x] theme.ts (M3 tokens lightM3/darkM3 + m3Motion) — DONE.
@@ -182,9 +193,9 @@ animations, React Navigation, Zustand, dark mode.
 - [ ] Tests: gestureMapper rewrite (pure: pan→frame mapping), theme tests,
       presentation store, keyboard text batching unit tests via vitest.
 - [ ] Verify: pnpm -F @kbm-remote/sender typecheck, lint, test. NOTE: tsconfig
-  has "types": [] — RN types come via @types/react-native peer? If tsc fails on
-  react-native imports, add "@types/react-native": "~0.79.0" (or matching 0.81?)
-  to devDependencies. RN 0.79.2 → types package version "0.79" probably.
+      has "types": [] — RN types come via @types/react-native peer? If tsc fails on
+      react-native imports, add "@types/react-native": "~0.79.0" (or matching 0.81?)
+      to devDependencies. RN 0.79.2 → types package version "0.79" probably.
 - [ ] Docs docs/Sender-App-M4.md; commit; zip via apps/sender/../build-zip.sh
-  (script exists: /home/ubuntu/kbm-repo/build-zip.sh); copy to
-  /mnt/desktop/Remote Emulator/kbm-repo.zip.
+      (script exists: /home/ubuntu/kbm-repo/build-zip.sh); copy to
+      /mnt/desktop/Remote Emulator/kbm-repo.zip.

@@ -1,18 +1,21 @@
 # Task State — Milestone 3c: Clipboard Subsystem
 
 ## Goal
+
 Clipboard sync in `@kbm-remote/input-provider` + receiver wiring, following the
 established pattern (provider contract → platform adapters → factory degrade →
 DI tokens in inputModule → permission-gated handlers in InputService).
 
 ## Protocol (already declared in packages/protocol/src/types/index.ts)
+
 - ClipboardSync: 0x70
 - ClipboardQuery: 0x71
-(no other clipboard frames exist; we use these two, plus the receiver push
-is passive: receiver sends ClipboardSync frames back to sender — same
-FrameRouter/FrameGateway on both directions).
+  (no other clipboard frames exist; we use these two, plus the receiver push
+  is passive: receiver sends ClipboardSync frames back to sender — same
+  FrameRouter/FrameGateway on both directions).
 
 ## Repo facts gathered
+
 - `packages/auth` is still a placeholder (no crypto helpers). Transport-level
   TLS only. So for "encryption" we implement a small local
   `packages/input-provider/src/clipboard/crypto.ts` using Node `crypto`:
@@ -31,8 +34,9 @@ FrameRouter/FrameGateway on both directions).
   execFile shells per platform.
 
 ## Design decisions
+
 1. ClipboardProvider contract:
-   read(): Promise<ClipboardContent | null>   (text or image PNG bytes)
+   read(): Promise<ClipboardContent | null> (text or image PNG bytes)
    write(content): Promise<void>
    clear(): Promise<void>
    Content: { kind: "text"|"image", data: string | Buffer, sha256: string }
@@ -81,6 +85,7 @@ FrameRouter/FrameGateway on both directions).
    clipboard frame tests (permission, conflict, manual/automatic paths).
 
 ## Progress
+
 - [x] clipboard.ts (content types, providers, bounds, sha256 helper)
 - [ ] ClipboardController
 - [ ] Mock + NativeClipboardProvider + factory
@@ -93,6 +98,7 @@ FrameRouter/FrameGateway on both directions).
 ## Progress update (Phase 2 in progress)
 
 ### Done so far (Phase 1 complete, Phase 2 started)
+
 1. `packages/input-provider/src/clipboard.ts` — ClipboardContent {kind,data,sha256},
    ClipboardOwner type, MAX_CLIPBOARD_TEXT_BYTES=64KB, MAX_CLIPBOARD_IMAGE_BYTES=8MB,
    BASE64_RE, base64DecodedLength, utf8ByteLength (imported from keyboard.ts, NOT
@@ -133,6 +139,7 @@ FrameRouter/FrameGateway on both directions).
    patterns, KEY_BYTES const removal).
 
 ### Now doing (receiver wiring)
+
 - inputService.ts: DONE — ClipboardController import, CLIPBOARD_PERMISSION, 5th ctor
   arg `clipboard`, registerHandlers adds ClipboardSync 0x70 + ClipboardQuery 0x71,
   hasClipboardPermission helper. STILL NEEDED: handleClipboardSync +
@@ -150,13 +157,14 @@ FrameRouter/FrameGateway on both directions).
   createInputContainer registers createClipboardProvider().provider +
   new ClipboardController({provider:...}); createInputService passes clipboard ctrl.
 - inputService tests: extend with clipboard describe block (17 tests exist now, 8 mouse
-  + 9 keyboard in mouse describe + 9 keyboard block). Add: clipboard permission gate
-  4005, auth gate 4005, sync delegates + conflict drops, oversized text rejected
-  (90KB), invalid PNG rejected, duplicate no-op, query pushes content (check
-  ctx.send(sent) signature first), encryption roundtrip test (makePayloadCipher).
+  - 9 keyboard in mouse describe + 9 keyboard block). Add: clipboard permission gate
+    4005, auth gate 4005, sync delegates + conflict drops, oversized text rejected
+    (90KB), invalid PNG rejected, duplicate no-op, query pushes content (check
+    ctx.send(sent) signature first), encryption roundtrip test (makePayloadCipher).
 - Docs, commit, zip, deliver.
 
 ### Key file locations
+
 - apps/receiver/src/main/inputService.ts (handlers + permissions)
 - apps/receiver/src/main/inputModule.ts (DI)
 - apps/receiver/tests/inputService.test.ts (integration tests)
@@ -171,6 +179,7 @@ FrameRouter/FrameGateway on both directions).
 ## State snapshot (after Phase 3 in progress)
 
 ### Completed
+
 - Phase 1+2 fully done: clipboard.ts, ClipboardController (with cipher+ownership
   options, applyRemoteWrite/pushOutbound/clear/markLocalClipboardWritten/
   encryptForTransport), clipboardCrypto.ts (makePayloadCipher sha256-based key,
@@ -186,6 +195,7 @@ FrameRouter/FrameGateway on both directions).
   clipboardControllerToken and registers clipboardProviderToken mock.
 
 ### Remaining steps
+
 1. Run: cd apps/receiver && pnpm vitest run tests/inputService.test.ts — expect all
    pass (17 mouse+keyboard + 8 clipboard + DI = 27).
 2. Full CI: pnpm run typecheck && lint && test && build (repo root).
@@ -210,6 +220,7 @@ FrameRouter/FrameGateway on both directions).
 6. message result with attachments zip + docs file.
 
 ### Deliverable patterns from prior milestones
+
 - Attachment order: /home/ubuntu/kbm-remote.zip, /home/ubuntu/kbm-repo/docs/<doc>.md
 - Mention commit hash, CI numbers (typecheck 12/12 etc.), test counts.
 - GitHub connector unavailable → push not possible; offer to enable.
@@ -219,6 +230,7 @@ FrameRouter/FrameGateway on both directions).
   or file transfer.
 
 ## Final delivery steps (in progress)
+
 - Docs written: docs/Clipboard-Subsystem-M3c.md (done).
 - CI FINAL STATE: typecheck green (12/12), lint 0 errors (only pre-existing warnings),
   tests 199 passing (input-provider 95 incl 36 clipboard; receiver 32 incl 8 clipboard),

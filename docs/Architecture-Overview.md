@@ -33,13 +33,13 @@ The two applications share five pure-TypeScript packages that own all contract a
 infrastructure code, so the wire protocol, cryptography, and input abstractions are
 identical on both sides of the connection by construction.
 
-| Package | Responsibility |
-| --- | --- |
-| `@kbm-remote/protocol` | Frame types, MsgPack codec with DEFLATE compression (FastCodec, 4 MiB inflate cap), validation schemas, protocol versioning |
-| `@kbm-remote/network` | `WssGateway` (server), `ClientConnection` (client), heartbeat and RTT metrics, mDNS discovery, frame coalescing |
-| `@kbm-remote/auth` | TLS certificate handling, pairing codes, session tokens, RBAC permission sets — dependency-free core TypeScript |
+| Package                      | Responsibility                                                                                                                      |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `@kbm-remote/protocol`       | Frame types, MsgPack codec with DEFLATE compression (FastCodec, 4 MiB inflate cap), validation schemas, protocol versioning         |
+| `@kbm-remote/network`        | `WssGateway` (server), `ClientConnection` (client), heartbeat and RTT metrics, mDNS discovery, frame coalescing                     |
+| `@kbm-remote/auth`           | TLS certificate handling, pairing codes, session tokens, RBAC permission sets — dependency-free core TypeScript                     |
 | `@kbm-remote/input-provider` | Input abstraction layer (`MouseController`, `KeyboardController`, `ClipboardController`) with dependency-injected platform backends |
-| `@kbm-remote/ui-components` | Material Design 3 design tokens (light/dark) shared by receiver UI and mobile sender |
+| `@kbm-remote/ui-components`  | Material Design 3 design tokens (light/dark) shared by receiver UI and mobile sender                                                |
 
 ## 2. Data Flow
 
@@ -74,11 +74,11 @@ pinned fingerprint stays stable across restarts. Discovery uses mDNS (`_kbmremot
 senders on the same LAN find the receiver without manual configuration; pairing is still
 required even after discovery, and pending devices receive **no permissions** until approved.
 
-| Component | Install path |
-| --- | --- |
-| Receiver | Windows NSIS installer / portable ZIP, macOS DMG / ZIP, Linux AppImage / deb |
-| Sender | Expo development builds (`pnpm --filter @kbm-remote/sender run android/ios`); EAS production builds planned (M8) |
-| CI | GitHub Actions — `ci.yml` (quality + build on PRs) and `release.yml` (tagged multi-platform installers) |
+| Component | Install path                                                                                                     |
+| --------- | ---------------------------------------------------------------------------------------------------------------- |
+| Receiver  | Windows NSIS installer / portable ZIP, macOS DMG / ZIP, Linux AppImage / deb                                     |
+| Sender    | Expo development builds (`pnpm --filter @kbm-remote/sender run android/ios`); EAS production builds planned (M8) |
+| CI        | GitHub Actions — `ci.yml` (quality + build on PRs) and `release.yml` (tagged multi-platform installers)          |
 
 ## 4. Extension Points
 

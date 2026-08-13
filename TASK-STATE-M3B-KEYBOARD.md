@@ -1,10 +1,12 @@
 # Milestone 3b — Keyboard Subsystem: Task State (internal notes)
 
 ## User request
+
 Implement keyboard input: printable keys, function keys, media keys, modifiers, shortcuts,
 unicode, long press, key repeat. Platform abstraction layer.
 
 ## Protocol facts (verified from packages/protocol/src/types/index.ts)
+
 FrameType: KeyPress 0x50, KeyHold 0x51, KeyRelease 0x52, TextInput 0x53,
 Shortcut 0x54, MediaKey 0x60. All fire-and-forget (mid=0) per doc §4.4-4.5.
 Note: protocol doc §4.4 says TextInput acknowledged (mid>0) — check actual protocol
@@ -15,6 +17,7 @@ Payload grammar (doc §4.4): KeyPress p={keys: string[]} combo; KeyHold/KeyRelea
 TextInput p={text} up to 4KB; Shortcut p={keys[], holdMs uint16, name}; MediaKey p={key}.
 
 ## nut.js 4.2.6 API (verified from typings)
+
 - KeyboardClass: type(...input: StringOrKey), pressKey(...keys: Key[]), releaseKey(...keys: Key[])
 - Key enum (105-key US layout): letters A-Z, Num0-9, F1-F24, modifiers LeftControl/LeftSuper/
   LeftWin/LeftCmd/LeftAlt/LeftMeta (and Right*), Shift, Enter, Return, Tab, Space, Backspace,
@@ -23,6 +26,7 @@ TextInput p={text} up to 4KB; Shortcut p={keys[], holdMs uint16, name}; MediaKey
 - autoDelayMs config between key events.
 
 ## Design decisions (final)
+
 1. New module packages/input-provider/src/keyboard.ts:
    - KeyboardProvider interface: press(input), release(input), typeText(input), mediaKey(input)
    - KeyId: union grammar — "a".."z", "A".."Z", "KeyA".."KeyZ" (KeyX grammar from protocol),
@@ -63,6 +67,7 @@ TextInput p={text} up to 4KB; Shortcut p={keys[], holdMs uint16, name}; MediaKey
 7. Docs: docs/Keyboard-Subsystem-M3b.md; commit; rebuild zip.
 
 ## Progress
+
 - [ ] keyboard.ts interfaces + KeyId grammar + validators
 - [ ] KeyboardController
 - [ ] MockKeyboardProvider + NutJsKeyboardProvider + NativeKeyboardProvider + factory
@@ -73,6 +78,7 @@ TextInput p={text} up to 4KB; Shortcut p={keys[], holdMs uint16, name}; MediaKey
 ## Progress log (Aug 13, 2026)
 
 ### Files created (all in packages/input-provider/src/)
+
 - keyboard.ts — KeyId grammar (LetterKey, DigitKey, PrintableKey, ModifierKey,
   FunctionKey, ArrowKey, MediaKey), MEDIA_KEYS, MODIFIER_KEYS, isModifierKey,
   isMediaKey, normalizeKeyId, utf8ByteLength, MAX_TEXT_INPUT_BYTES=4096, inputs
@@ -105,6 +111,7 @@ TextInput p={text} up to 4KB; Shortcut p={keys[], holdMs uint16, name}; MediaKey
   mock; createKeyboardController({...}) convenience.
 
 ### Types fixed so far
+
 - InputError in mouse.ts extended with reasons: invalidKey, invalidKeys,
   keyAlreadyHeld, invalidText, textTooLarge, emptyText, invalidMediaKey,
   unsupportedKey, bindingsUnavailable.
@@ -112,14 +119,12 @@ TextInput p={text} up to 4KB; Shortcut p={keys[], holdMs uint16, name}; MediaKey
 - NutJsKeyboard iface: pressKey/releaseKey (string|number|object)[].
 
 ### Remaining typecheck errors (Aug 13 ~03:50)
-1. keyboard.ts ~171: `throw new InputError(\`key "${String(value)}"\`...` — value
-   at that line is after typeof check so it's string, but TS thinks unknown in
-   template? Actual error at line 171 col 53 = `String(value)` arg? No — it's the
-   `throw new InputError(..., "invalidKey")` call at line 180-183 area... check
-   current line numbers: error TS2345 at 171:53 "unknown not assignable to string"
-   — that's `String(value)` in template literal at throw line. And 186:61
-   `MODIFIER_KEYS includes(value) return value` — return string → KeyId needs cast
-   `return value as unknown as KeyId`.
+
+1. keyboard.ts ~171: `throw new InputError(\`key "${String(value)}"\`...`— value
+at that line is after typeof check so it's string, but TS thinks unknown in
+template? Actual error at line 171 col 53 =`String(value)`arg? No — it's the`throw new InputError(..., "invalidKey")`call at line 180-183 area... check
+current line numbers: error TS2345 at 171:53 "unknown not assignable to string"
+— that's`String(value)`in template literal at throw line. And 186:61`MODIFIER_KEYS includes(value) return value`— return string → KeyId needs cast`return value as unknown as KeyId`.
 2. keyboardNative.ts line 24: 'ModifierKey' imported but never read — remove from
    import (only MediaKeyInput needed as void marker, or remove the void hack and
    MediaKeyInput import and use input.key in mediaKey impl directly).
@@ -129,6 +134,7 @@ TextInput p={text} up to 4KB; Shortcut p={keys[], holdMs uint16, name}; MediaKey
    throws unsupportedKey when undefined, call it for all enum lookups.
 
 ### Still to do
+
 - Finish typecheck green, run input-provider tests (keyboard.test.ts — write ~20),
 - receiver wiring: apps/receiver/src/main/inputModule.ts — add keyboardProviderToken,
   keyboardControllerToken, NutJsKeyboardProvider/NativeKeyboardProvider imports,
@@ -151,6 +157,7 @@ TextInput p={text} up to 4KB; Shortcut p={keys[], holdMs uint16, name}; MediaKey
   cp to /mnt/desktop/Remote Emulator/kbm-repo.zip, deliver.
 
 ### M3a precedent (done)
+
 - M3a committed as 8c1b4e2; zip delivery flow verified (2.4MB lean zip works).
 - inputModule.ts tokens: monitorToken, providerToken, controllerToken via Container
   from input-provider; ElectronMonitors class; createInputContainer();
@@ -158,6 +165,7 @@ TextInput p={text} up to 4KB; Shortcut p={keys[], holdMs uint16, name}; MediaKey
 - InputService permission gates close 4005; registerHandlers(router).
 
 ## Status (latest)
+
 - input-provider COMPLETE: keyboard.ts, KeyboardController, MockKeyboardProvider,
   NutJsKeyboardProvider, NativeKeyboardProvider (keyboardNative.ts with exported
   X_KEYS/WIN_VK + createNativeKeyboardBackend), keyboardFactory.ts. All typecheck OK.
@@ -172,6 +180,7 @@ TextInput p={text} up to 4KB; Shortcut p={keys[], holdMs uint16, name}; MediaKey
 - Receiver typecheck OK.
 
 ## Next steps (remaining)
+
 1. Extend apps/receiver/tests/inputService.test.ts:
    - register mock KeyboardController (MockKeyboardProvider-based or direct spy controller
      built with {provider: new MockKeyboardProvider(), sleep: async fn}) in container under

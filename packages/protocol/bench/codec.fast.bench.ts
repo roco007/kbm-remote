@@ -4,10 +4,7 @@
  *
  * Run: pnpm exec tsx --tsconfig tsconfig.bench.json packages/protocol/bench/codec.fast.bench.ts
  */
-import {
-  decodeFrameFast,
-  encodeFrameFast,
-} from "../src/codec/FastCodec";
+import { decodeFrameFast, encodeFrameFast } from "../src/codec/FastCodec";
 import type { FrameEnvelope } from "../src/types";
 
 let mid = 0;
@@ -22,11 +19,7 @@ const bigClipboard = frame(0x30, {
   mimeType: "text/plain",
 });
 
-async function measure(
-  name: string,
-  fn: () => unknown,
-  iters: number,
-): Promise<number> {
+async function measure(name: string, fn: () => unknown, iters: number): Promise<number> {
   for (let i = 0; i < 200; i++) fn();
   const t0 = process.hrtime.bigint();
   for (let i = 0; i < iters; i++) fn();
@@ -36,11 +29,22 @@ async function measure(
 
 console.log("=== FastCodec benchmark ===");
 void (async () => {
-console.log(`  encode mouseMove: ${await measure("e", () => encodeFrameFast(mouseMove), 200_000)} ops/ms`);
-console.log(`  decode mouseMove: ${await measure("d", () => decodeFrameFast(encodeFrameFast(mouseMove)), 200_000)} ops/ms`);
-console.log(`  encode keyPress: ${await measure("e", () => encodeFrameFast(keyPress), 200_000)} ops/ms`);
-console.log(`  decode keyPress: ${await measure("d", () => decodeFrameFast(encodeFrameFast(keyPress)), 200_000)} ops/ms`);
-console.log(`  encode clipboard 4KB: ${await measure("e", () => encodeFrameFast(bigClipboard), 50_000)} ops/ms`);
-console.log(`  decode clipboard 4KB: ${await measure("d", () => decodeFrameFast(encodeFrameFast(bigClipboard)), 50_000)} ops/ms`);
-}
-)();
+  console.log(
+    `  encode mouseMove: ${await measure("e", () => encodeFrameFast(mouseMove), 200_000)} ops/ms`,
+  );
+  console.log(
+    `  decode mouseMove: ${await measure("d", () => decodeFrameFast(encodeFrameFast(mouseMove)), 200_000)} ops/ms`,
+  );
+  console.log(
+    `  encode keyPress: ${await measure("e", () => encodeFrameFast(keyPress), 200_000)} ops/ms`,
+  );
+  console.log(
+    `  decode keyPress: ${await measure("d", () => decodeFrameFast(encodeFrameFast(keyPress)), 200_000)} ops/ms`,
+  );
+  console.log(
+    `  encode clipboard 4KB: ${await measure("e", () => encodeFrameFast(bigClipboard), 50_000)} ops/ms`,
+  );
+  console.log(
+    `  decode clipboard 4KB: ${await measure("d", () => decodeFrameFast(encodeFrameFast(bigClipboard)), 50_000)} ops/ms`,
+  );
+})();

@@ -38,14 +38,14 @@ all communication flows through the typed preload bridge (`ReceiverApi`).
 
 ### Main process responsibilities
 
-| Concern | Implementation |
-| --- | --- |
-| Window lifecycle | 1120×720 frameless-capable window with devtools flag via env |
-| System tray | `Tray` with status-aware context menu (listening / error), show/hide window |
-| Auto-start | `app.getLoginItemSettings()` mirrored to the `autoStart` setting on change |
-| Close-to-tray | `close` event cancelled when `closeToTray` is true; real quit via tray menu |
-| IPC surface | `settings:*`, `service:start/stop/status`, `devices:list/pending/approve/revoke/…`, `pairing:code`, `logs:tail`, `shell:openExternal` |
-| Events to renderer | `serviceStateChanged`, `devicesChanged`, `settingsChanged` |
+| Concern            | Implementation                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Window lifecycle   | 1120×720 frameless-capable window with devtools flag via env                                                                          |
+| System tray        | `Tray` with status-aware context menu (listening / error), show/hide window                                                           |
+| Auto-start         | `app.getLoginItemSettings()` mirrored to the `autoStart` setting on change                                                            |
+| Close-to-tray      | `close` event cancelled when `closeToTray` is true; real quit via tray menu                                                           |
+| IPC surface        | `settings:*`, `service:start/stop/status`, `devices:list/pending/approve/revoke/…`, `pairing:code`, `logs:tail`, `shell:openExternal` |
+| Events to renderer | `serviceStateChanged`, `devicesChanged`, `settingsChanged`                                                                            |
 
 ### Preload bridge
 
@@ -66,13 +66,13 @@ window.kbmReceiver: {
 
 ## 2. Screens (Material Design 3)
 
-| Screen | Behaviour |
-| --- | --- |
-| **Dashboard** | Device list (trust status, per-device permissions), live session grid with byte counters, round-trip time and latency, start/stop service control, status chip |
-| **Pairing** | 6-digit code display (5-min TTL, refresh), QR rendering via `qrcode` (`kbmremote://pair/<code>`), pending-request queue with Approve/Deny, manual code verify |
-| **Permissions** | One card per trusted device; toggles for the six protocol scopes (mouse, keyboard, clipboard, media, presentation, fileTransfer); instant revocation |
-| **Logs** | Live auto-tailing ring buffer, filter by level (info/warn/error) and category, manual refresh |
-| **Settings** | Device ID, port (apply & restart service), theme (system/light/dark), auto-start and close-to-tray switches |
+| Screen          | Behaviour                                                                                                                                                      |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dashboard**   | Device list (trust status, per-device permissions), live session grid with byte counters, round-trip time and latency, start/stop service control, status chip |
+| **Pairing**     | 6-digit code display (5-min TTL, refresh), QR rendering via `qrcode` (`kbmremote://pair/<code>`), pending-request queue with Approve/Deny, manual code verify  |
+| **Permissions** | One card per trusted device; toggles for the six protocol scopes (mouse, keyboard, clipboard, media, presentation, fileTransfer); instant revocation           |
+| **Logs**        | Live auto-tailing ring buffer, filter by level (info/warn/error) and category, manual refresh                                                                  |
+| **Settings**    | Device ID, port (apply & restart service), theme (system/light/dark), auto-start and close-to-tray switches                                                    |
 
 ### Theme system
 
@@ -87,13 +87,13 @@ CSS custom properties by `<TokenProvider mode>`. `"system"` resolves
 
 ## 3. Verification
 
-| Check | Result |
-| --- | --- |
-| `pnpm -F @kbm-remote/receiver typecheck` | 0 errors (incl. JSX, DOM lib, strict) |
-| `pnpm -F @kbm-remote/receiver lint` | 0 errors, 1 intentional console warning |
-| `pnpm -F @kbm-remote/receiver test` | 38/38 (app, inputService, networkService, **electronMain**) |
-| `pnpm test` (monorepo) | 12/12 Turbo tasks cached-green |
-| `pnpm build` | tsc → dist + esbuild bundle (190 KB IIFE) + index.html |
+| Check                                    | Result                                                      |
+| ---------------------------------------- | ----------------------------------------------------------- |
+| `pnpm -F @kbm-remote/receiver typecheck` | 0 errors (incl. JSX, DOM lib, strict)                       |
+| `pnpm -F @kbm-remote/receiver lint`      | 0 errors, 1 intentional console warning                     |
+| `pnpm -F @kbm-remote/receiver test`      | 38/38 (app, inputService, networkService, **electronMain**) |
+| `pnpm test` (monorepo)                   | 12/12 Turbo tasks cached-green                              |
+| `pnpm build`                             | tsc → dist + esbuild bundle (190 KB IIFE) + index.html      |
 
 New test coverage (`tests/electronMain.test.ts`): settings persistence and
 merge semantics, pairing-code generation/verification, pending-queue cap of 5,
@@ -110,7 +110,7 @@ pnpm start            # electron dist/main/main.js
 ```
 
 Settings persist at `~/.kbm-remote/settings.json`; trusted devices at
-`~/.kbm-remote/devices.json`. Port changes require *Apply & restart* from the
+`~/.kbm-remote/devices.json`. Port changes require _Apply & restart_ from the
 Settings screen; everything else applies live.
 
 ---

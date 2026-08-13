@@ -11,15 +11,15 @@ The repository is a **pnpm workspace** orchestrated by **Turborepo** with per-wo
 `@typescript-eslint`, `import`, and Prettier integration) and Prettier are enforced on every
 commit through Husky and `lint-staged`.
 
-| Path | Workspace | Runtime |
-| --- | --- | --- |
-| `apps/receiver` | `@kbm-remote/receiver` v1.0.0 | Electron 42 + NestJS 11 (main process), React renderer |
-| `apps/sender` | `@kbm-remote/sender` v1.0.0 | Expo 53 / React Native 0.79 |
-| `packages/protocol` | `@kbm-remote/protocol` | Pure TS — the shared wire contract |
-| `packages/network` | `@kbm-remote/network` | Pure TS — WSS client and server |
-| `packages/auth` | `@kbm-remote/auth` | Pure TS — pairing, sessions, RBAC |
-| `packages/input-provider` | `@kbm-remote/input-provider` | Pure TS — input controllers + backends |
-| `packages/ui-components` | `@kbm-remote/ui-components` | Pure TS — MD3 theme tokens |
+| Path                      | Workspace                     | Runtime                                                |
+| ------------------------- | ----------------------------- | ------------------------------------------------------ |
+| `apps/receiver`           | `@kbm-remote/receiver` v1.0.0 | Electron 42 + NestJS 11 (main process), React renderer |
+| `apps/sender`             | `@kbm-remote/sender` v1.0.0   | Expo 53 / React Native 0.79                            |
+| `packages/protocol`       | `@kbm-remote/protocol`        | Pure TS — the shared wire contract                     |
+| `packages/network`        | `@kbm-remote/network`         | Pure TS — WSS client and server                        |
+| `packages/auth`           | `@kbm-remote/auth`            | Pure TS — pairing, sessions, RBAC                      |
+| `packages/input-provider` | `@kbm-remote/input-provider`  | Pure TS — input controllers + backends                 |
+| `packages/ui-components`  | `@kbm-remote/ui-components`   | Pure TS — MD3 theme tokens                             |
 
 Root scripts: `pnpm dev`, `build`, `test`, `lint`, `typecheck`, `format`, `format:check`,
 `clean`.
@@ -92,7 +92,7 @@ dashboard shows live connection status.
 Unit tests live alongside each workspace (`tests/` or co-located `*.test.ts`). Rules:
 
 - Every fix to the protocol, gateway, or auth package requires at least one new test.
-- Code-injection defences are tested via *captured-command* tests: inject a mock executor
+- Code-injection defences are tested via _captured-command_ tests: inject a mock executor
   (the Win32 backend accepts an `ExecFn` dependency) and assert the exact command string.
 - Mock `node:child_process`-level behaviour at the class boundary (DI), not by module
   patching — it is more reliable under Vitest transforms.
@@ -107,11 +107,11 @@ Unit tests live alongside each workspace (`tests/` or co-located `*.test.ts`). R
   `ubuntu-latest` / `macos-latest` / `windows-latest` via `electron-builder`, uploads the
   artifacts, and creates the GitHub release with draft-off. Installers per platform:
 
-| Platform | Artifact |
-| --- | --- |
-| Windows | NSIS installer (`KBMRRemoteReceiver Setup 1.0.0.exe`), portable ZIP |
-| macOS | DMG + ZIP (universal build on `macos-latest`) |
-| Linux | AppImage + deb (built on `ubuntu-latest`) |
+| Platform | Artifact                                                            |
+| -------- | ------------------------------------------------------------------- |
+| Windows  | NSIS installer (`KBMRRemoteReceiver Setup 1.0.0.exe`), portable ZIP |
+| macOS    | DMG + ZIP (universal build on `macos-latest`)                       |
+| Linux    | AppImage + deb (built on `ubuntu-latest`)                           |
 
 Local installer builds:
 
@@ -126,11 +126,11 @@ Expo/EAS builds are planned for M8.
 
 ## 9. Common Tasks
 
-| Task | Command |
-| --- | --- |
-| Full clean rebuild | `pnpm clean && pnpm install && pnpm build` |
-| Run only receiver tests | `pnpm --filter @kbm-remote/receiver test` |
-| Run only protocol tests | `pnpm --filter @kbm-remote/protocol test` |
-| Bundle analysis (receiver renderer) | `pnpm --filter @kbm-remote/receiver run bench:bundle` |
-| Receiver production start | `pnpm --filter @kbm-remote/receiver run start` |
-| Check dependencies | `pnpm audit` (CI also runs this on every quality pass) |
+| Task                                | Command                                                |
+| ----------------------------------- | ------------------------------------------------------ |
+| Full clean rebuild                  | `pnpm clean && pnpm install && pnpm build`             |
+| Run only receiver tests             | `pnpm --filter @kbm-remote/receiver test`              |
+| Run only protocol tests             | `pnpm --filter @kbm-remote/protocol test`              |
+| Bundle analysis (receiver renderer) | `pnpm --filter @kbm-remote/receiver run bench:bundle`  |
+| Receiver production start           | `pnpm --filter @kbm-remote/receiver run start`         |
+| Check dependencies                  | `pnpm audit` (CI also runs this on every quality pass) |

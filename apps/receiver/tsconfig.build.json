@@ -4,8 +4,5 @@
     "declaration": true,
     "declarationMap": true
   },
-  "exclude": [
-    "tests/**/*.ts",
-    "node_modules"
-  ]
+  "exclude": ["tests/**/*.ts", "node_modules"]
 }

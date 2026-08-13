@@ -43,24 +43,24 @@ Three contracts define the boundary. `MouseProvider` abstracts the OS input laye
 ```typescript
 // packages/input-provider/src/mouse.ts
 interface MouseProvider {
-  moveAbsolute(input: MoveAbsoluteInput): Promise<void>;   // {x, y, displayIndex?}
-  moveRelative(input: MoveRelativeInput): Promise<void>;   // {dx, dy}
-  click(input: ClickInput): Promise<void>;                 // {button, action}
-  scroll(input: ScrollInput): Promise<void>;               // {axis, amount}
+  moveAbsolute(input: MoveAbsoluteInput): Promise<void>; // {x, y, displayIndex?}
+  moveRelative(input: MoveRelativeInput): Promise<void>; // {dx, dy}
+  click(input: ClickInput): Promise<void>; // {button, action}
+  scroll(input: ScrollInput): Promise<void>; // {axis, amount}
   dragStart(input: DragStartInput): Promise<void>;
   dragMove(input: DragMoveInput): Promise<void>;
   dragEnd(input: DragStartInput): Promise<void>;
 }
 
 interface MonitorApi {
-  getDisplays(): Promise<DisplayInfo[]>;   // live layout on every call
+  getDisplays(): Promise<DisplayInfo[]>; // live layout on every call
   currentDisplay(): Promise<DisplayInfo>;
 }
 
 interface DisplayInfo {
   displayIndex: number;
   geometry: { x: number; y: number; width: number; height: number }; // virtual units
-  scaleFactor: number;   // passed through to the platform layer
+  scaleFactor: number; // passed through to the platform layer
   primary: boolean;
   label: string;
 }
@@ -72,11 +72,11 @@ interface DisplayInfo {
 
 The factory in `providers/factory.ts` implements a graceful degradation order so the receiver always starts, even in environments where no input backend is available:
 
-| Rank | Provider | Backend | Selection rule |
-|------|----------|---------|----------------|
-| 1 | `NutJsMouseProvider` | nut.js 4.x (`mouse.move`, `mouse.drag`, `mouse.leftClick`/`rightClick`/`middleClick`/`dblClick`, scroll, drag) | Default when the bindings load |
-| 2 | `NativeMouseProvider` | Per-platform reference paths — Windows `SendInput`, macOS CGEvent (via `cliclick`), Linux XTest (via `xdotool`) | Fallback when nut.js bindings fail (headless/CI, stripped builds) |
-| 3 | `MockMouseProvider` | In-memory spy | Only when explicitly requested (`kind: "mock"`) |
+| Rank | Provider              | Backend                                                                                                         | Selection rule                                                    |
+| ---- | --------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| 1    | `NutJsMouseProvider`  | nut.js 4.x (`mouse.move`, `mouse.drag`, `mouse.leftClick`/`rightClick`/`middleClick`/`dblClick`, scroll, drag)  | Default when the bindings load                                    |
+| 2    | `NativeMouseProvider` | Per-platform reference paths — Windows `SendInput`, macOS CGEvent (via `cliclick`), Linux XTest (via `xdotool`) | Fallback when nut.js bindings fail (headless/CI, stripped builds) |
+| 3    | `MockMouseProvider`   | In-memory spy                                                                                                   | Only when explicitly requested (`kind: "mock"`)                   |
 
 A key property of the factory: construction never throws. If nut.js fails to load and the native helpers are unavailable, the factory returns the mock provider tagged `kind: "unavailable"` with a human-readable note, so the receiver can still launch and surface a clear status message instead of crashing at startup. The native backend modules implement a thin `NativeMouseBackend` contract, which means real native bindings (C++ addon, FFI) can replace the shell helpers later without touching any other file.
 
@@ -97,7 +97,7 @@ Rounding to integer virtual units is deliberate: sub-pixel moves are noise for t
 
 ### 3.2 Throttling
 
-A touchpad sender can emit several hundred move events per second; flooding the OS queue at that rate is wasted work and can even desync the pointer. The controller accepts one move frame per `inputThrottleMs` window (default **8 ms ≈ 125 Hz**, chosen against the protocol's ≤ 50 ms latency budget) and drops everything in between — the *latest* sample is always honoured because senders re-sample the pointer position for every frame. The same throttle applies to `moveRelative` and `dragMove`. The window and the clock (`now`) are constructor options, which is what keeps throttling behaviour deterministic in tests.
+A touchpad sender can emit several hundred move events per second; flooding the OS queue at that rate is wasted work and can even desync the pointer. The controller accepts one move frame per `inputThrottleMs` window (default **8 ms ≈ 125 Hz**, chosen against the protocol's ≤ 50 ms latency budget) and drops everything in between — the _latest_ sample is always honoured because senders re-sample the pointer position for every frame. The same throttle applies to `moveRelative` and `dragMove`. The window and the clock (`now`) are constructor options, which is what keeps throttling behaviour deterministic in tests.
 
 ### 3.3 Drag state machine
 
@@ -131,34 +131,34 @@ this.inputService = createInputService(inputContainer, (sessionId) =>
 
 The mapping from protocol frame to controller call, as implemented in `InputService`:
 
-| Frame | Payload check | Controller call |
-|-------|--------------|-----------------|
-| `MouseMove` 0x40 | `x`, `y` numeric in range | `moveAbsolute({x, y, displayIndex})` |
-| `MouseClick` 0x41 | `button` ∈ left/right/middle; `action` ∈ down/up/click/dblclick | `click({button, action})` |
-| `MouseScroll` 0x42 | `axis` ∈ vertical/horizontal; `amount` number | `scroll({axis, amount})` |
-| `MouseDragStart` 0x43 | `button` ∈ left/middle | `dragStart({button})` |
-| `MouseDragMove` 0x44 | `x`, `y` numeric in range | `dragMove({x, y, displayIndex})` |
-| `MouseDragEnd` 0x45 | `button` ∈ left/middle | `dragEnd({button})` |
+| Frame                 | Payload check                                                   | Controller call                      |
+| --------------------- | --------------------------------------------------------------- | ------------------------------------ |
+| `MouseMove` 0x40      | `x`, `y` numeric in range                                       | `moveAbsolute({x, y, displayIndex})` |
+| `MouseClick` 0x41     | `button` ∈ left/right/middle; `action` ∈ down/up/click/dblclick | `click({button, action})`            |
+| `MouseScroll` 0x42    | `axis` ∈ vertical/horizontal; `amount` number                   | `scroll({axis, amount})`             |
+| `MouseDragStart` 0x43 | `button` ∈ left/middle                                          | `dragStart({button})`                |
+| `MouseDragMove` 0x44  | `x`, `y` numeric in range                                       | `dragMove({x, y, displayIndex})`     |
+| `MouseDragEnd` 0x45   | `button` ∈ left/middle                                          | `dragEnd({button})`                  |
 
 ## 6. Testing
 
 The test suite mirrors the production graph, layer by layer, so every failing test points at exactly one module.
 
-| Suite | Count | What it proves |
-|-------|-------|----------------|
-| `input-provider` (unit) | 33 | Coordinate mapping math; boundary clamping; throttle window behaviour; drag state machine transitions and error codes; scroll clamping and no-op suppression; monitor picking rules (index, current, primary fallback); per-platform provider selection; mock/native/nutjs provider delegation |
-| `apps/receiver/tests/inputService.test.ts` | 8 | Permission gate closes with 4005 when unauthenticated or missing the `mouse` scope; valid frames delegate to the controller with the expected payload shape (including `displayIndex` on moves); clicks/double-click/scroll dispatch; the full drag sequence round-trips; invalid payloads leave the provider untouched; all six frame types are registered; the DI container resolves the real pipeline (monitors → controller → provider) |
+| Suite                                      | Count | What it proves                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `input-provider` (unit)                    | 33    | Coordinate mapping math; boundary clamping; throttle window behaviour; drag state machine transitions and error codes; scroll clamping and no-op suppression; monitor picking rules (index, current, primary fallback); per-platform provider selection; mock/native/nutjs provider delegation                                                                                                                                              |
+| `apps/receiver/tests/inputService.test.ts` | 8     | Permission gate closes with 4005 when unauthenticated or missing the `mouse` scope; valid frames delegate to the controller with the expected payload shape (including `displayIndex` on moves); clicks/double-click/scroll dispatch; the full drag sequence round-trips; invalid payloads leave the provider untouched; all six frame types are registered; the DI container resolves the real pipeline (monitors → controller → provider) |
 
 Two design details worth noting in the integration tests. First, `FixedMonitors(makeTestDisplays({ secondary: true }))` replaces the real monitor source in tests, giving the controller a deterministic two-monitor layout (1920×1080 primary + 2560×1440 secondary offset by 1920 px) so coordinate-mapping assertions stay exact regardless of the machine running CI. Second, the drag test advances fake timers by 10 ms between `dragMove` frames — this exercises the throttle rather than fighting it, asserting that the throttling contract holds end-to-end on the real receiver path.
 
 ## 7. CI Results
 
-| Gate | Result |
-|------|--------|
-| Typecheck (12 workspaces) | 12 successful |
-| Lint | 0 errors (1 pre-existing warning in sender) |
-| Build | 7 successful |
-| Tests | input-provider 33/33 · network 46/46 · receiver 16/16 · sender 8/8 (plus auth/protocol suites via Turborepo) |
+| Gate                      | Result                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Typecheck (12 workspaces) | 12 successful                                                                                                |
+| Lint                      | 0 errors (1 pre-existing warning in sender)                                                                  |
+| Build                     | 7 successful                                                                                                 |
+| Tests                     | input-provider 33/33 · network 46/46 · receiver 16/16 · sender 8/8 (plus auth/protocol suites via Turborepo) |
 
 ## 8. Extensibility — Keyboard and Media Follow On
 

@@ -8,13 +8,13 @@ connections from a **sender** application built with Expo and React Native. All 
 through a single TLS-protected WebSocket connection authenticated with pairing codes,
 certificate pinning, and challenge-response sessions.
 
-| | |
-| --- | --- |
-| Receiver | Electron 42 + NestJS 11 · Windows, macOS, Linux |
-| Sender | Expo 53 / React Native 0.79 · Android (iOS planned) |
-| Protocol | Binary MessagePack frames over WSS, MsgPack-compressed with DEFLATE |
+|          |                                                                              |
+| -------- | ---------------------------------------------------------------------------- |
+| Receiver | Electron 42 + NestJS 11 · Windows, macOS, Linux                              |
+| Sender   | Expo 53 / React Native 0.79 · Android (iOS planned)                          |
+| Protocol | Binary MessagePack frames over WSS, MsgPack-compressed with DEFLATE          |
 | Security | TLS + cert pinning, pairing codes, challenge-response auth, RBAC permissions |
-| Monorepo | pnpm workspaces + Turborepo · TypeScript 5.8 · ESLint + Prettier + Husky |
+| Monorepo | pnpm workspaces + Turborepo · TypeScript 5.8 · ESLint + Prettier + Husky     |
 
 ## Features
 
@@ -52,11 +52,11 @@ kbm-remote/
 
 ### Prerequisites
 
-| Tool | Minimum version |
-| --- | --- |
-| Node.js | 22.x LTS |
-| pnpm | 10.x |
-| git | 2.x |
+| Tool    | Minimum version |
+| ------- | --------------- |
+| Node.js | 22.x LTS        |
+| pnpm    | 10.x            |
+| git     | 2.x             |
 
 The root `package.json` declares `engines.node >= 20`; Node 22 is recommended for the Electron
 42 runtime and future protocol headroom.
@@ -111,32 +111,32 @@ Manual pairing is identical but with a typed code. Pairing codes are uniform-ran
 The security posture is documented in full in [`docs/Security-Audit-M7.md`](docs/Security-Audit-M7.md)
 (the Milestone 7 audit, which fixed all 15 identified findings in code). Highlights:
 
-| Layer | Defence |
-| --- | --- |
-| Transport | WSS + self-signed TLS identity persisted in `userData`; sender certificate pinning (TOFU) |
-| Authentication | Challenge-response handshake; one-time 96-bit challenges, 30 s window |
-| Replay | Per-session `seenMids` deduplication for every reliable frame |
-| Rate limiting | Pre-auth ping watchdog, auth timeout, per-IP connection caps, sliding-window auth throttling |
-| Secrets | Session tokens salted SHA-256 at rest; constant-time verification |
-| Injection | Numeric-only VK codes; PowerShell single-quote doubling proven by captured-command tests |
-| DoS | DEFLATE decompression cap (4 MiB); unauthenticated traffic throttled |
-| Permissions | Pending/unapproved devices receive no permissions; owner-configurable RBAC |
+| Layer          | Defence                                                                                      |
+| -------------- | -------------------------------------------------------------------------------------------- |
+| Transport      | WSS + self-signed TLS identity persisted in `userData`; sender certificate pinning (TOFU)    |
+| Authentication | Challenge-response handshake; one-time 96-bit challenges, 30 s window                        |
+| Replay         | Per-session `seenMids` deduplication for every reliable frame                                |
+| Rate limiting  | Pre-auth ping watchdog, auth timeout, per-IP connection caps, sliding-window auth throttling |
+| Secrets        | Session tokens salted SHA-256 at rest; constant-time verification                            |
+| Injection      | Numeric-only VK codes; PowerShell single-quote doubling proven by captured-command tests     |
+| DoS            | DEFLATE decompression cap (4 MiB); unauthenticated traffic throttled                         |
+| Permissions    | Pending/unapproved devices receive no permissions; owner-configurable RBAC                   |
 
 ## Documentation
 
-| Document | Purpose |
-| --- | --- |
-| [`docs/Architecture-Overview.md`](docs/Architecture-Overview.md) | System architecture, module map, data flow, deployment topology |
-| [`docs/API-Documentation.md`](docs/API-Documentation.md) | Wire protocol, network client/server APIs, auth APIs |
-| [`docs/Developer-Guide.md`](docs/Developer-Guide.md) | Workspace layout, build system, extending the protocol, debugging, testing |
-| [`docs/Contribution-Guide.md`](docs/Contribution-Guide.md) | Branching, conventional commits, pull-request and review process |
-| [`docs/Protocol-Documentation.md`](docs/Protocol-Documentation.md) | Wire contract specification (every frame, handshake, heartbeat) |
-| [`docs/Security-Audit-M7.md`](docs/Security-Audit-M7.md) | Security audit findings, remediations, residual risks |
-| [`docs/Architecture-Design-Document.md`](docs/Architecture-Design-Document.md) | Full architecture design (modules, DI, clean architecture) |
-| [`docs/Technology-Evaluation-Report.md`](docs/Technology-Evaluation-Report.md) | Technology choices and justification |
-| [`docs/UX-Design-Document.md`](docs/UX-Design-Document.md) | Screen specs and wireframes for both apps |
-| [`docs/Optimization-Benchmarks-M6.md`](docs/Optimization-Benchmarks-M6.md) | FastCodec, adaptive heartbeats, input coalescing benchmarks |
-| [`docs/RELEASE-CHECKLIST-v1.0.md`](docs/RELEASE-CHECKLIST-v1.0.md) | Version 1.0 release checklist |
+| Document                                                                       | Purpose                                                                    |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| [`docs/Architecture-Overview.md`](docs/Architecture-Overview.md)               | System architecture, module map, data flow, deployment topology            |
+| [`docs/API-Documentation.md`](docs/API-Documentation.md)                       | Wire protocol, network client/server APIs, auth APIs                       |
+| [`docs/Developer-Guide.md`](docs/Developer-Guide.md)                           | Workspace layout, build system, extending the protocol, debugging, testing |
+| [`docs/Contribution-Guide.md`](docs/Contribution-Guide.md)                     | Branching, conventional commits, pull-request and review process           |
+| [`docs/Protocol-Documentation.md`](docs/Protocol-Documentation.md)             | Wire contract specification (every frame, handshake, heartbeat)            |
+| [`docs/Security-Audit-M7.md`](docs/Security-Audit-M7.md)                       | Security audit findings, remediations, residual risks                      |
+| [`docs/Architecture-Design-Document.md`](docs/Architecture-Design-Document.md) | Full architecture design (modules, DI, clean architecture)                 |
+| [`docs/Technology-Evaluation-Report.md`](docs/Technology-Evaluation-Report.md) | Technology choices and justification                                       |
+| [`docs/UX-Design-Document.md`](docs/UX-Design-Document.md)                     | Screen specs and wireframes for both apps                                  |
+| [`docs/Optimization-Benchmarks-M6.md`](docs/Optimization-Benchmarks-M6.md)     | FastCodec, adaptive heartbeats, input coalescing benchmarks                |
+| [`docs/RELEASE-CHECKLIST-v1.0.md`](docs/RELEASE-CHECKLIST-v1.0.md)             | Version 1.0 release checklist                                              |
 
 Subsystem design notes: [`Mouse-Subsystem-M3a.md`](docs/Mouse-Subsystem-M3a.md),
 [`Keyboard-Subsystem-M3b.md`](docs/Keyboard-Subsystem-M3b.md),
@@ -172,18 +172,18 @@ before push. CI (GitHub Actions) blocks merges that fail lint, typecheck, tests,
 
 ## Roadmap
 
-| Milestone | Scope |
-| --- | --- |
-| M0 | Monorepo scaffold |
-| M1 | Auth package — pairing codes, session tokens, RBAC |
-| M2 | Protocol codec + WSS client/server, heartbeat/RTT |
-| M3 | Input provider — mouse, keyboard, clipboard subsystems |
-| M4 | Mobile sender — 8 screens, Zustand, React Navigation |
-| M5 | Electron receiver dashboard — tray, auto-start, pairing, permissions, logs |
-| M6 | Performance — FastCodec, adaptive heartbeats, input coalescing |
-| M7 | Security audit — all 15 findings fixed, Electron 42, pinning, rate limiting |
-| **v1.0** | Production packaging — CI, release workflow, installers, documentation |
-| M8 | iOS sender, token TTL + rolling re-authentication, discovery-message signing |
+| Milestone | Scope                                                                        |
+| --------- | ---------------------------------------------------------------------------- |
+| M0        | Monorepo scaffold                                                            |
+| M1        | Auth package — pairing codes, session tokens, RBAC                           |
+| M2        | Protocol codec + WSS client/server, heartbeat/RTT                            |
+| M3        | Input provider — mouse, keyboard, clipboard subsystems                       |
+| M4        | Mobile sender — 8 screens, Zustand, React Navigation                         |
+| M5        | Electron receiver dashboard — tray, auto-start, pairing, permissions, logs   |
+| M6        | Performance — FastCodec, adaptive heartbeats, input coalescing               |
+| M7        | Security audit — all 15 findings fixed, Electron 42, pinning, rate limiting  |
+| **v1.0**  | Production packaging — CI, release workflow, installers, documentation       |
+| M8        | iOS sender, token TTL + rolling re-authentication, discovery-message signing |
 
 ## License
 

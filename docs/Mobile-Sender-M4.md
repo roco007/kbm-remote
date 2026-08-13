@@ -12,16 +12,16 @@ consume them shipped in Milestone 3.
 
 ## Screens Implemented
 
-| Screen | Route | UX reference | Key implementation notes |
-| --- | --- | --- | --- |
-| Home | `Home` | S1 | Device roster, one-tap connect, live connection chip, navigation into all control screens and settings |
-| Pair Device | `PairDevice` | S2 | Manual IP/host + port validation, pairing-code entry (fixed length, whitespace-tolerant), validation state feedback |
-| Touchpad | `Touchpad` | S3 | PanResponder gesture mapping: relative mouse move, zone-based right-click and scroll, two-finger drag with drop release, long-press drag activation, configurable sensitivity |
-| Keyboard | `Keyboard` | S4 | QWERTY grid, hidden `TextInput` batcher flushing accumulated characters as `TextInput` frames (§3.6), Shift/Caps toggles composing as two-key shortcuts, function strip (Esc, Tab, Enter, arrows, Backspace) |
-| Media Controls | `MediaControls` | S5 | Large transport buttons emitting `MediaKey` frames (§3.4): play/pause, prev/next track, volume up/down, mute |
-| Clipboard | `Clipboard` | S6 | Remote clipboard snapshot with refresh (`ClipboardQuery` §3.7), text composer with live byte counter against the `MAX_ITEM_BYTES` cap, resendable local history persisted in AsyncStorage |
-| Presentation Mode | `PresentationMode` | S8 | Oversized next/previous arrows, slide counter, `expo-keep-awake` activation tied to the "auto-lock screen" setting, session lifecycle bound to the screen |
-| Settings | `Settings` | S9 | Touchpad sensitivity, scroll speed, haptics, auto-lock screen, theme selection (system/light/dark) with live preview |
+| Screen            | Route              | UX reference | Key implementation notes                                                                                                                                                                                     |
+| ----------------- | ------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Home              | `Home`             | S1           | Device roster, one-tap connect, live connection chip, navigation into all control screens and settings                                                                                                       |
+| Pair Device       | `PairDevice`       | S2           | Manual IP/host + port validation, pairing-code entry (fixed length, whitespace-tolerant), validation state feedback                                                                                          |
+| Touchpad          | `Touchpad`         | S3           | PanResponder gesture mapping: relative mouse move, zone-based right-click and scroll, two-finger drag with drop release, long-press drag activation, configurable sensitivity                                |
+| Keyboard          | `Keyboard`         | S4           | QWERTY grid, hidden `TextInput` batcher flushing accumulated characters as `TextInput` frames (§3.6), Shift/Caps toggles composing as two-key shortcuts, function strip (Esc, Tab, Enter, arrows, Backspace) |
+| Media Controls    | `MediaControls`    | S5           | Large transport buttons emitting `MediaKey` frames (§3.4): play/pause, prev/next track, volume up/down, mute                                                                                                 |
+| Clipboard         | `Clipboard`        | S6           | Remote clipboard snapshot with refresh (`ClipboardQuery` §3.7), text composer with live byte counter against the `MAX_ITEM_BYTES` cap, resendable local history persisted in AsyncStorage                    |
+| Presentation Mode | `PresentationMode` | S8           | Oversized next/previous arrows, slide counter, `expo-keep-awake` activation tied to the "auto-lock screen" setting, session lifecycle bound to the screen                                                    |
+| Settings          | `Settings`         | S9           | Touchpad sensitivity, scroll speed, haptics, auto-lock screen, theme selection (system/light/dark) with live preview                                                                                         |
 
 ## Architecture
 
@@ -77,12 +77,12 @@ required for the current set of screens, keeping the bundle lean.
 
 ## Verification
 
-| Check | Result |
-| --- | --- |
-| TypeScript (project references) | 0 errors in `apps/sender` |
-| ESLint (src + tests) | 0 errors, 0 warnings |
-| Sender unit tests | 17 passing (connection manager integration + 9 new frame-emission tests) |
-| Full monorepo | 12 Turbo tasks successful — 15 protocol, 1 auth, 2 ui-components, 95 input-provider, 46 network, 32 receiver, 17 sender tests |
+| Check                           | Result                                                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript (project references) | 0 errors in `apps/sender`                                                                                                     |
+| ESLint (src + tests)            | 0 errors, 0 warnings                                                                                                          |
+| Sender unit tests               | 17 passing (connection manager integration + 9 new frame-emission tests)                                                      |
+| Full monorepo                   | 12 Turbo tasks successful — 15 protocol, 1 auth, 2 ui-components, 95 input-provider, 46 network, 32 receiver, 17 sender tests |
 
 The new `tests/inputDispatch.test.ts` harness swaps the connection store's
 manager via `vi.doMock` and asserts the exact envelope shape of every frame

@@ -33,16 +33,16 @@ The keyboard subsystem reuses the three-layer pipeline proven by the mouse work:
 
 The same tiny DI container from Milestone 3a composes the graph. Two new tokens were added: `keyboardProviderToken` and `keyboardControllerToken`. The production composition root (`apps/receiver/src/main/inputModule.ts`) now registers the monitors, the mouse provider/controller, the keyboard provider, and the keyboard controller, and hands the keyboard controller to `InputService` as its fourth constructor argument.
 
-| Component | File | Role |
-|---|---|---|
-| Key grammar + types | `packages/input-provider/src/keyboard.ts` | `KeyId` union, validators (`normalizeKeyId`, `isModifierKey`, `isMediaKey`), input DTOs, UTF-8 boundary |
-| Controller | `packages/input-provider/src/controllers/KeyboardController.ts` | Combos, hold/release, application-level key repeat, Unicode text |
-| nut.js adapter | `packages/input-provider/src/providers/keyboardNutjs.ts` | `KeyId` → nut.js `Key` enum; text via `keyboard.type` |
-| Native adapter | `packages/input-provider/src/providers/keyboardNative.ts` | Per-platform code maps (`WIN_VK`, `X_KEYS`) and a `NativeKeyboardBackend` contract |
-| Factory | `packages/input-provider/src/providers/keyboardFactory.ts` | `createKeyboardProvider()` selection with degrade-to-mock policy |
-| Mock | `packages/input-provider/src/providers/keyboardMock.ts` | Recording provider for tests |
-| Receiver bridge | `apps/receiver/src/main/inputService.ts` | Six frame handlers + `KEYBOARD_PERMISSION` / `MEDIA_PERMISSION` gates |
-| Composition root | `apps/receiver/src/main/inputModule.ts` | DI tokens, `createInputContainer`, `createInputService` |
+| Component           | File                                                            | Role                                                                                                    |
+| ------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Key grammar + types | `packages/input-provider/src/keyboard.ts`                       | `KeyId` union, validators (`normalizeKeyId`, `isModifierKey`, `isMediaKey`), input DTOs, UTF-8 boundary |
+| Controller          | `packages/input-provider/src/controllers/KeyboardController.ts` | Combos, hold/release, application-level key repeat, Unicode text                                        |
+| nut.js adapter      | `packages/input-provider/src/providers/keyboardNutjs.ts`        | `KeyId` → nut.js `Key` enum; text via `keyboard.type`                                                   |
+| Native adapter      | `packages/input-provider/src/providers/keyboardNative.ts`       | Per-platform code maps (`WIN_VK`, `X_KEYS`) and a `NativeKeyboardBackend` contract                      |
+| Factory             | `packages/input-provider/src/providers/keyboardFactory.ts`      | `createKeyboardProvider()` selection with degrade-to-mock policy                                        |
+| Mock                | `packages/input-provider/src/providers/keyboardMock.ts`         | Recording provider for tests                                                                            |
+| Receiver bridge     | `apps/receiver/src/main/inputService.ts`                        | Six frame handlers + `KEYBOARD_PERMISSION` / `MEDIA_PERMISSION` gates                                   |
+| Composition root    | `apps/receiver/src/main/inputModule.ts`                         | DI tokens, `createInputContainer`, `createInputService`                                                 |
 
 ---
 
@@ -50,15 +50,15 @@ The same tiny DI container from Milestone 3a composes the graph. Two new tokens 
 
 The protocol carries keys as plain strings; the receiver must accept them from an untrusted socket and turn them into a closed set before they ever reach a platform adapter. The grammar lives in `keyboard.ts` as the `KeyId` union:
 
-| Family | Identifiers | Normalization |
-|---|---|---|
-| `LetterKey` | `"A".."Z"` and `"KeyA".."KeyZ"` | lowercase letters promoted to upper; `keyc` → `"KeyC"` |
-| `DigitKey` | `"0".."9"` | as-is |
-| `PrintableKey` | `Space`, `Tab`, `Backspace`, `Enter`, `Escape`, punctuation by US layout name (`Backquote`, `Semicolon`, …), numpad keys | as-is |
-| `ModifierKey` | `ControlLeft/Right`, `ShiftLeft/Right`, `AltLeft/Right`, `MetaLeft/Right` | as-is (left/right sides distinct) |
-| `FunctionKey` | `F1`..`F24` | as-is |
-| `ArrowKey` | `ArrowUp/Down/Left/Right` | as-is |
-| `MediaKey` | `volumeUp`, `volumeDown`, `mute`, `playPause`, `prevTrack`, `nextTrack` | abstract identifiers only — adapter-specific codes are internal |
+| Family         | Identifiers                                                                                                              | Normalization                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `LetterKey`    | `"A".."Z"` and `"KeyA".."KeyZ"`                                                                                          | lowercase letters promoted to upper; `keyc` → `"KeyC"`          |
+| `DigitKey`     | `"0".."9"`                                                                                                               | as-is                                                           |
+| `PrintableKey` | `Space`, `Tab`, `Backspace`, `Enter`, `Escape`, punctuation by US layout name (`Backquote`, `Semicolon`, …), numpad keys | as-is                                                           |
+| `ModifierKey`  | `ControlLeft/Right`, `ShiftLeft/Right`, `AltLeft/Right`, `MetaLeft/Right`                                                | as-is (left/right sides distinct)                               |
+| `FunctionKey`  | `F1`..`F24`                                                                                                              | as-is                                                           |
+| `ArrowKey`     | `ArrowUp/Down/Left/Right`                                                                                                | as-is                                                           |
+| `MediaKey`     | `volumeUp`, `volumeDown`, `mute`, `playPause`, `prevTrack`, `nextTrack`                                                  | abstract identifiers only — adapter-specific codes are internal |
 
 `normalizeKeyId(value)` accepts a string matching the grammar and returns it narrowed to `KeyId`; anything else (empty string, `null`, non-string, `F25`, `Cmd`, `Ctrl`…) throws `InputError` with reason `invalidKey`. The identifiers were deliberately chosen to map 1:1 onto nut.js's `Key` enum names, which removes most of the translation work for the primary adapter.
 
@@ -123,22 +123,22 @@ A `NativeKeyboardBackend` contract (`pressKey`, `releaseKey`, `typeText`, `media
 
 The keyboard suite adds **26 tests** to `packages/input-provider/tests/keyboard.test.ts`, bringing the input package to **59 passing tests** overall. Coverage goals:
 
-| Area | Tests |
-|---|---|
-| Grammar | letter/digit/function/printable/modifier/media acceptance, case normalization, rejection of `Cmd`/`F25`/empty/non-string |
-| Predicates | `isModifierKey` and `isMediaKey` narrowing |
-| UTF-8 boundary | ASCII, 3-byte (`€`, `日`), 4-byte surrogate pairs (😊) |
-| pressKeys | modifier-first reordering, empty-array rejection, invalid-key rejection with no provider side effects |
-| shortcut | press–hold–reverse-release order, single-key rejection, injected sleep honoured |
-| hold/repeat | plain OS hold, application-level repeat fires after start delay, double-hold rejection, invalid-window degradation, idempotent release |
-| text/media | unicode delegation, 4 KB byte boundary, empty text, media delegation and rejection |
-| Factory | nutjs default, explicit mock, unknown-kind fallback |
-| Native tables | every modifier + media key present in `WIN_VK` and `X_KEYS` |
+| Area           | Tests                                                                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Grammar        | letter/digit/function/printable/modifier/media acceptance, case normalization, rejection of `Cmd`/`F25`/empty/non-string               |
+| Predicates     | `isModifierKey` and `isMediaKey` narrowing                                                                                             |
+| UTF-8 boundary | ASCII, 3-byte (`€`, `日`), 4-byte surrogate pairs (😊)                                                                                 |
+| pressKeys      | modifier-first reordering, empty-array rejection, invalid-key rejection with no provider side effects                                  |
+| shortcut       | press–hold–reverse-release order, single-key rejection, injected sleep honoured                                                        |
+| hold/repeat    | plain OS hold, application-level repeat fires after start delay, double-hold rejection, invalid-window degradation, idempotent release |
+| text/media     | unicode delegation, 4 KB byte boundary, empty text, media delegation and rejection                                                     |
+| Factory        | nutjs default, explicit mock, unknown-kind fallback                                                                                    |
+| Native tables  | every modifier + media key present in `WIN_VK` and `X_KEYS`                                                                            |
 
-Receiver integration tests (`apps/receiver/tests/inputService.test.ts`) grew from 8 to **17 tests** with a dedicated `"InputService — keyboard subsystem"` block: unauthenticated close 4005, keyboard and media permission gates (verified as *separate* scopes), KeyPress modifier reordering across the wire, the hold→repeat→release round trip against fake timers, text input with Unicode plus oversized-rejection, shortcut hold windows, media delegation, and invalid-payload rejection with zero provider calls. A router-registration test asserts all twelve mouse + keyboard frame types are wired. Full CI (typecheck 12/12 packages, lint 0 errors, all test suites, build 7/7) is green.
+Receiver integration tests (`apps/receiver/tests/inputService.test.ts`) grew from 8 to **17 tests** with a dedicated `"InputService — keyboard subsystem"` block: unauthenticated close 4005, keyboard and media permission gates (verified as _separate_ scopes), KeyPress modifier reordering across the wire, the hold→repeat→release round trip against fake timers, text input with Unicode plus oversized-rejection, shortcut hold windows, media delegation, and invalid-payload rejection with zero provider calls. A router-registration test asserts all twelve mouse + keyboard frame types are wired. Full CI (typecheck 12/12 packages, lint 0 errors, all test suites, build 7/7) is green.
 
 ---
 
 ## 7. Open Items and Next Milestones
 
-The grammar currently covers the US physical layout; localized layouts (e.g. `KeyA` on an AZERTY keyboard) map to the physical key, not the produced character — senders that want the *character* "a" on AZERTY should use `TextInput` instead of `KeyPress`, which is by design. `native` adapter shells are reference implementations awaiting optional native addon bindings for production hardening. The clipboard frames (0x70–0x71) and file transfer (0x80) declared in the protocol enum are the natural next milestones, and the permission/token/handler pattern established here extends to them without structural change.
+The grammar currently covers the US physical layout; localized layouts (e.g. `KeyA` on an AZERTY keyboard) map to the physical key, not the produced character — senders that want the _character_ "a" on AZERTY should use `TextInput` instead of `KeyPress`, which is by design. `native` adapter shells are reference implementations awaiting optional native addon bindings for production hardening. The clipboard frames (0x70–0x71) and file transfer (0x80) declared in the protocol enum are the natural next milestones, and the permission/token/handler pattern established here extends to them without structural change.

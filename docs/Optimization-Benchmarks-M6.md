@@ -12,17 +12,17 @@ All measurements were taken on the CI sandbox (Node 22.13.0, 2 vCPU, 4 GB RAM). 
 
 Before any optimization the monorepo recorded the following numbers. The codec baseline uses the original `@msgpack/msgpack` pipeline (`encodeFrame`/`decodeFrame`), which re-creates an Encoder for every call and always awaits the encode promise even for tiny hot frames.
 
-| Metric (same-process comparison) | Before |
-| --- | --- |
-| Encode `MouseMove` (dx/dy) | 174 ops/ms |
-| Decode `MouseMove` | 163 ops/ms |
-| Encode `KeyPress` | 186 ops/ms |
-| Decode `KeyPress` | 161 ops/ms |
-| Encode `ClipboardSync` (4 KB) | 16 ops/ms |
-| Decode `ClipboardSync` (4 KB) | 13 ops/ms |
-| End-to-end client `send()` throughput (encoding + socket write + framing) | 15.14 ops/ms |
-| Heartbeat cadence | Fixed 5 s, unconditionally, for the life of the connection |
-| Receiver renderer bundle (minified) | 190.4 KB |
+| Metric (same-process comparison)                                          | Before                                                     |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Encode `MouseMove` (dx/dy)                                                | 174 ops/ms                                                 |
+| Decode `MouseMove`                                                        | 163 ops/ms                                                 |
+| Encode `KeyPress`                                                         | 186 ops/ms                                                 |
+| Decode `KeyPress`                                                         | 161 ops/ms                                                 |
+| Encode `ClipboardSync` (4 KB)                                             | 16 ops/ms                                                  |
+| Decode `ClipboardSync` (4 KB)                                             | 13 ops/ms                                                  |
+| End-to-end client `send()` throughput (encoding + socket write + framing) | 15.14 ops/ms                                               |
+| Heartbeat cadence                                                         | Fixed 5 s, unconditionally, for the life of the connection |
+| Receiver renderer bundle (minified)                                       | 190.4 KB                                                   |
 
 ## 3. Optimizations applied
 
@@ -30,14 +30,14 @@ Before any optimization the monorepo recorded the following numbers. The codec b
 
 A second codec implementation, **FastCodec**, reuses a single `msgpackr` `Encoder`/`Decoder` pair instead of building one per call, builds the frame envelope in a single pass, and copies the encoded bytes out of msgpackr's internal reusable buffer with a strict length slice so the returned `Uint8Array` is stable. Its benchmark (`codec.fast.bench.ts`) shows:
 
-| Payload | Baseline | FastCodec | Speedup |
-| --- | --- | --- | --- |
-| Encode `MouseMove` | 174.37 ops/ms | 823.77 ops/ms | **4.7×** |
-| Decode `MouseMove` | 162.84 ops/ms | 482.94 ops/ms | **3.0×** |
-| Encode `KeyPress` | 185.63 ops/ms | 861.12 ops/ms | **4.6×** |
-| Decode `KeyPress` | 161.34 ops/ms | 498.79 ops/ms | **3.1×** |
-| Encode `ClipboardSync` 4 KB | 16.32 ops/ms | 28.89 ops/ms | **1.8×** |
-| Decode `ClipboardSync` 4 KB | 12.88 ops/ms | 19.61 ops/ms | **1.5×** |
+| Payload                     | Baseline      | FastCodec     | Speedup  |
+| --------------------------- | ------------- | ------------- | -------- |
+| Encode `MouseMove`          | 174.37 ops/ms | 823.77 ops/ms | **4.7×** |
+| Decode `MouseMove`          | 162.84 ops/ms | 482.94 ops/ms | **3.0×** |
+| Encode `KeyPress`           | 185.63 ops/ms | 861.12 ops/ms | **4.6×** |
+| Decode `KeyPress`           | 161.34 ops/ms | 498.79 ops/ms | **3.1×** |
+| Encode `ClipboardSync` 4 KB | 16.32 ops/ms  | 28.89 ops/ms  | **1.8×** |
+| Decode `ClipboardSync` 4 KB | 12.88 ops/ms  | 19.61 ops/ms  | **1.5×** |
 
 The largest frames (clipboard) are dominated by DEFLATE compression rather than serialization, so they improve more modestly — the hot, latency-sensitive path is the small mouse/keyboard frames, which are now nearly 5× cheaper.
 
@@ -51,11 +51,11 @@ A fixed heartbeat every 5 s keeps the radio and the event loop warm even when th
 
 A touchpad gesture can produce 60–240 `MouseMove` events per second; the old behavior sent one WebSocket frame per event. The new `FrameCoalescer` (network package, framework-neutral) accumulates rapid same-type input frames and flushes a single coalesced frame on the next animation frame (~16 ms) or immediately when a distinct event type arrives:
 
-| Frame type | Coalescing rule |
-| --- | --- |
-| `MouseMove` / `MouseDragMove` | Delta summing; only the cumulative final cursor state is sent |
-| `MouseScroll` | Per-axis amounts are summed; vertical emitted first to mirror gesture arrival order |
-| Clicks, keys, text, media, clipboard, presentation | Never coalesced — each is distinct input and flushes the pending batch first |
+| Frame type                                         | Coalescing rule                                                                     |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `MouseMove` / `MouseDragMove`                      | Delta summing; only the cumulative final cursor state is sent                       |
+| `MouseScroll`                                      | Per-axis amounts are summed; vertical emitted first to mirror gesture arrival order |
+| Clicks, keys, text, media, clipboard, presentation | Never coalesced — each is distinct input and flushes the pending batch first        |
 
 `apps/sender/src/services/inputDispatch.ts` wires a module-level coalescer into every input call. Because the coalescing window is one animation frame, no perceived input lag is introduced, yet bursts of mouse movement collapse into a single frame — cutting encoding work and socket queue pressure by roughly an order of magnitude during gestures.
 
@@ -63,22 +63,22 @@ A touchpad gesture can produce 60–240 `MouseMove` events per second; the old b
 
 End-to-end client `send()` throughput (encoding, framing, WebSocket write) was re-measured through the same benchmark with the FastCodec path enabled:
 
-| Metric | Before | After | Speedup |
-| --- | --- | --- | --- |
+| Metric                     | Before       | After        | Speedup  |
+| -------------------------- | ------------ | ------------ | -------- |
 | Client `send()` throughput | 15.14 ops/ms | 33.72 ops/ms | **2.2×** |
 
 ### 3.5 Renderer bundle size
 
 The receiver renderer was measured with an esbuild metafile (new `bench:bundle` script in `apps/receiver`):
 
-| Item | Size (minified) |
-| --- | --- |
-| Total bundle | **190.4 KB** |
-| react-dom (inherent) | 126.5 KB |
-| Own application code | 25.1 KB |
-| qrcode (pairing QR) | 22.7 KB |
-| react + scheduler | 11.1 KB |
-| All other dependencies | ~5 KB |
+| Item                   | Size (minified) |
+| ---------------------- | --------------- |
+| Total bundle           | **190.4 KB**    |
+| react-dom (inherent)   | 126.5 KB        |
+| Own application code   | 25.1 KB         |
+| qrcode (pairing QR)    | 22.7 KB         |
+| react + scheduler      | 11.1 KB         |
+| All other dependencies | ~5 KB           |
 
 The bundle is a single IIFE file by design (zero runtime dependency on a module loader), so code splitting is unavailable — a dynamic import of `qrcode` was evaluated and confirmed to be inlined by esbuild's IIFE format, producing no saving. The own-code footprint of 25.1 KB for eight screens plus a full Material Design 3 component library is already lean; further meaningful reduction would require replacing react-dom itself, which is outside scope.
 

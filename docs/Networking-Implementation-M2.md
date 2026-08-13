@@ -6,12 +6,12 @@ This document records how the networking layer was implemented, verified, and wi
 
 The milestone delivered two new packages and app-level wiring, backed by a test suite that exercises the wire contract end-to-end rather than through mocks alone.
 
-| Component | Location | Test coverage |
-| --- | --- | --- |
-| Binary protocol codec | `packages/protocol` | 15 tests — MessagePack round-trip, DEFLATE compression threshold boundary, compressor injection, envelope validation |
-| Network transport & client/server | `packages/network` | 46 tests — latency metrics, retry/reconnect constants, full client lifecycle on a fake socket, frame router, auth middleware, gateway end-to-end against a real `ws` client |
-| Receiver app wiring | `apps/receiver` | 8 tests — real TLS server, real WebSocket client, Hello/HelloAck, subprotocol negotiation, version gating, authentication flow, 4001 close on invalid token |
-| Sender app wiring | `apps/sender` | 8 tests — connection lifecycle, session resume, graceful disconnect, disposal, inbound message routing |
+| Component                         | Location            | Test coverage                                                                                                                                                               |
+| --------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Binary protocol codec             | `packages/protocol` | 15 tests — MessagePack round-trip, DEFLATE compression threshold boundary, compressor injection, envelope validation                                                        |
+| Network transport & client/server | `packages/network`  | 46 tests — latency metrics, retry/reconnect constants, full client lifecycle on a fake socket, frame router, auth middleware, gateway end-to-end against a real `ws` client |
+| Receiver app wiring               | `apps/receiver`     | 8 tests — real TLS server, real WebSocket client, Hello/HelloAck, subprotocol negotiation, version gating, authentication flow, 4001 close on invalid token                 |
+| Sender app wiring                 | `apps/sender`       | 8 tests — connection lifecycle, session resume, graceful disconnect, disposal, inbound message routing                                                                      |
 
 **All monorepo gates pass**: `pnpm turbo build`, `typecheck`, `lint`, and `test` are green (61 tests total across the two apps, 46 in the network package, 15 in the protocol package).
 
@@ -43,10 +43,10 @@ Every frame on the wire is a MessagePack-encoded envelope, optionally DEFLATE-co
 
 ```ts
 interface FrameEnvelope {
-  t: number;      // FrameType discriminator
-  mid: number;    // message id — 0 = fire-and-forget; >0 = reliable, earns an Ack
-  v: number;      // protocol major version (1)
-  ts: number;     // sender wall-clock ms
+  t: number; // FrameType discriminator
+  mid: number; // message id — 0 = fire-and-forget; >0 = reliable, earns an Ack
+  v: number; // protocol major version (1)
+  ts: number; // sender wall-clock ms
   p: Record<string, unknown>; // type-specific payload
 }
 ```
@@ -57,13 +57,13 @@ Small frames (raw payload ≤ 256 bytes, `COMPRESSION_THRESHOLD_BYTES`) are sent
 
 The implemented handshake mirrors Spec §3:
 
-| Phase | Wire exchange | Implementation |
-| --- | --- | --- |
-| Transport | TCP → TLS 1.3 → WSS upgrade with subprotocol `kbmremote.v1+msgpack` | `https.createServer({key, cert})` + `ws.WebSocketServer({server})` with `verifyClient` |
-| Handshake | Sender `Hello` (mid=1) → Receiver `HelloAck` {sessionId} | Registered router handler in `NetworkService`; gateway auto-Acks mid>0 |
-| Authentication | Sender `Authenticate` {sessionId, sessionToken} → `AuthOk` / `AuthFailed` | `AuthMiddleware.verifyAuthenticate` against an `AuthStore`; session promotion via `gateway.authenticate` |
-| Operational | `Ping`/`Pong` every 5 s; reliable frames earn `Ack`; `Nack` on protocol violations | `LatencyMetrics` + `ClientConnection` retry loop + watchdog |
-| Shutdown | `Disconnect` echo, 2 s grace, then close 4006 | `WssGateway.stop()` drain sequence |
+| Phase          | Wire exchange                                                                      | Implementation                                                                                           |
+| -------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Transport      | TCP → TLS 1.3 → WSS upgrade with subprotocol `kbmremote.v1+msgpack`                | `https.createServer({key, cert})` + `ws.WebSocketServer({server})` with `verifyClient`                   |
+| Handshake      | Sender `Hello` (mid=1) → Receiver `HelloAck` {sessionId}                           | Registered router handler in `NetworkService`; gateway auto-Acks mid>0                                   |
+| Authentication | Sender `Authenticate` {sessionId, sessionToken} → `AuthOk` / `AuthFailed`          | `AuthMiddleware.verifyAuthenticate` against an `AuthStore`; session promotion via `gateway.authenticate` |
+| Operational    | `Ping`/`Pong` every 5 s; reliable frames earn `Ack`; `Nack` on protocol violations | `LatencyMetrics` + `ClientConnection` retry loop + watchdog                                              |
+| Shutdown       | `Disconnect` echo, 2 s grace, then close 4006                                      | `WssGateway.stop()` drain sequence                                                                       |
 
 Subprotocol negotiation is enforced at the WebSocket level: clients that fail to negotiate `kbmremote.v1+msgpack` receive an HTTP rejection before any frame is parsed. Protocol major version is checked per-frame at the router; an unsupported major version (`v !== 1`) closes the connection with **4004**. Authentication failure after a valid handshake closes with **4001** (`NotAuthenticated`).
 

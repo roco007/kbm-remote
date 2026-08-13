@@ -1,11 +1,13 @@
 # M3 Mouse Subsystem — Task State
 
 ## User request
+
 Implement the MOUSE subsystem only (no keyboard/media). Features: absolute + relative movement,
 left/right/middle click, drag, scroll, double click, multiple monitor support.
 Abstract platform-specific implementations, dependency injection, tests.
 
 ## Design decisions (final)
+
 1. No external DI framework (no NestJS bootstrap yet, no inversify dep risk). Use a tiny
    hand-rolled DI container in the receiver app: `packages/input-provider/src/di.ts`
    (Container: registerSingleton/registerValue, resolve) — or simpler: receiver app owns a
@@ -13,7 +15,7 @@ Abstract platform-specific implementations, dependency injection, tests.
    apps/receiver (app-level composition root), keep input-provider framework-free.
 2. Mouse abstraction: extend InputProvider with mouse-only interface in input-provider package:
    `MouseProvider { name; moveAbsolute(x,y); moveRelative(dx,dy); down/up/click/dblclick(button);
-   scroll(axis,amount); dragStart/dragMove/dragEnd }` — DECISION: keep InputProvider as-is and add
+scroll(axis,amount); dragStart/dragMove/dragEnd }` — DECISION: keep InputProvider as-is and add
    dedicated `MouseProvider` interface in input-provider/src/mouse.ts (focused subsystem),
    InputProvider composes MouseProvider + KeyboardProvider + MediaProvider later.
 3. Providers (platform abstracted):
@@ -50,6 +52,7 @@ Abstract platform-specific implementations, dependency injection, tests.
    (pnpm install). Since we abstract, tests use mock provider; nutjs provider only loaded at runtime.
 
 ## Existing facts
+
 - InputProvider interface in packages/input-provider/src/types/index.ts (moveMouse, click, scroll,
   dragStart/Move/End + keyboard/media/command methods). Keep it; add MouseProvider interface new file.
 - protocols FrameType: MouseMove 0x40, MouseClick 0x41, MouseScroll 0x42, MouseDragStart 0x43,
@@ -62,23 +65,24 @@ Abstract platform-specific implementations, dependency injection, tests.
 - Permission scope for mouse: "mouse". verifyAuthenticate returns permissions string[].
 - gateway.sendTo needs ws ref — handlers have ctx only; send replies via ctx.send. MouseMove is
   fire-and-forget (mid=0) so no reply needed. MouseClick also mid=0 per spec? Mouse input frames
-  are fire-and-forget (spec: input events, ping/pong mid=0). 
+  are fire-and-forget (spec: input events, ping/pong mid=0).
 - receiver tests: connectClient(url,[SUBPROTOCOL],{rejectUnauthorized:false}) via ws; receiveFrame
   helper uses msgpackDecode(ownBytes(data)).
 
 ## MouseController contract (decided)
+
 class MouseController(options: {provider, monitors, now?, inputThrottleMs?})
-  moveAbsolute({x,y}: {x:number,y:number} normalized 0..1, options?) → Promise<void>
-    - looks up target display; clamps; provider.moveAbsolute(virtualX,virtualY)
-  moveRelative({dx,dy}) → provider.moveRelative
-  click({button, action:click|dblclick|down|up})
-  scroll({axis,amount}) with clamp ±15
-  dragStart({button}) / dragMove({dx,dy} or abs) / dragEnd({button})
-  moveAbsolute supports {displayIndex?} payload field
-  Double click: action dblclick → provider dblclick; timeSource injectable for testability.
-  Input rate limiting: throttles consecutive move frames (default 8ms ≈ 125Hz), drop excess.
+moveAbsolute({x,y}: {x:number,y:number} normalized 0..1, options?) → Promise<void> - looks up target display; clamps; provider.moveAbsolute(virtualX,virtualY)
+moveRelative({dx,dy}) → provider.moveRelative
+click({button, action:click|dblclick|down|up})
+scroll({axis,amount}) with clamp ±15
+dragStart({button}) / dragMove({dx,dy} or abs) / dragEnd({button})
+moveAbsolute supports {displayIndex?} payload field
+Double click: action dblclick → provider dblclick; timeSource injectable for testability.
+Input rate limiting: throttles consecutive move frames (default 8ms ≈ 125Hz), drop excess.
 
 ## Progress
+
 - [ ] input-provider: mouse.ts interfaces + monitors.ts + MouseController + providers (mock, native, nutjs, factory)
 - [ ] input-provider tests
 - [ ] receiver: MouseService + DI container (di.ts) + wire into NetworkService handlers + tests
@@ -87,13 +91,14 @@ class MouseController(options: {provider, monitors, now?, inputThrottleMs?})
 - [ ] commit + zip to /mnt/desktop/Remote Emulator/kbm-repo.zip + deliver
 
 ## Receiver wiring facts (verified)
+
 - FrameType in packages/protocol/src/types/index.ts: MouseMove 0x40, MouseClick 0x41,
   MouseScroll 0x42, MouseDragStart 0x43, MouseDragMove 0x44, MouseDragEnd 0x45.
 - FrameRouter.register(type, handler(frame, ctx) => {ok:true}) — handler gets (f, ctx).
 - FrameContext: {sessionId, authenticated, send, close, setSessionId} — NO frame field.
 - AuthDecision: {authenticated, permissions: string[], sessionId}; GatewaySession extends it
-  + {ws, metrics, missedPongs, connectedAt, lastPongTs}; exported from
-  packages/network/src/server/index.ts (type GatewaySession) and network src/index barrel.
+  - {ws, metrics, missedPongs, connectedAt, lastPongTs}; exported from
+    packages/network/src/server/index.ts (type GatewaySession) and network src/index barrel.
 - Gateway: gateway.router getter exists (line ~174 returns this.router).
 - InputService (apps/receiver/src/main/inputService.ts) WRITTEN: constructor(controller,
   sessionLookup(sessionId)=>GatewaySession|undefined, log?). registerHandlers(router).
@@ -122,6 +127,7 @@ class MouseController(options: {provider, monitors, now?, inputThrottleMs?})
   verify exact method names from packages/input-provider/src/mouse.ts if tests need it.
 
 ## Receiver wiring progress (verified)
+
 - apps/receiver/src/main/inputService.ts DONE: class InputService(controller,
   sessionLookup(sessionId)=>GatewaySession|undefined, log?). registerHandlers(router) —
   FrameRouter from @kbm-remote/network; FrameType from @kbm-remote/protocol; handler
@@ -145,6 +151,7 @@ class MouseController(options: {provider, monitors, now?, inputThrottleMs?})
   no TLS needed, mock router); run full CI; docs/ file; commit+zip+deliver.
 
 ## Test fixes in progress (apps/receiver/tests/inputService.test.ts)
+
 - File exists; dispatch(session, frame, overrideCtx) now passes ctx through.
 - 3 tests pass (unauth gate, permission gate, registers all 6 types). 3 delegation
   tests failing: provider.calls empty — root cause: hasMousePermission uses
@@ -159,12 +166,11 @@ class MouseController(options: {provider, monitors, now?, inputThrottleMs?})
   FIRST (before controller resolve... but controller singleton builds lazily at
   resolve — register monitor before container.resolve(controllerToken)). Also
   register providerToken with MockMouseProvider in the DI test.
-- Remaining deliverables: 1) fix tests, 2) full monorepo CI (typecheck/lint/test/build),
-   3) docs/KeyboardMouse-Subsystem-M3.md (protocol types: MouseMove/Click/Scroll/
-   DragStart/DragMove/DragEnd; controller API; DI tokens; platform adapters),
-   4) commit + zip to /mnt/desktop/Remote Emulator/kbm-repo.zip + deliver.
+- Remaining deliverables: 1) fix tests, 2) full monorepo CI (typecheck/lint/test/build), 3) docs/KeyboardMouse-Subsystem-M3.md (protocol types: MouseMove/Click/Scroll/
+  DragStart/DragMove/DragEnd; controller API; DI tokens; platform adapters), 4) commit + zip to /mnt/desktop/Remote Emulator/kbm-repo.zip + deliver.
 
 ## Debug status (inputService.test.ts)
+
 Handler awaits now; click/scroll/dragStart/dragEnd delegate fine, but moveAbsolute
 and dragMove leave provider.calls empty. Both go through
 controller.moveAbsolute/dragMove → resolveAbsoluteTarget → monitors.getDisplays.
@@ -211,6 +217,7 @@ Mystery — add console.log in the test of what controller.options.monitors
 instance is (getDisplays result). Actually simplest: just log controller options.
 
 ## Debug status 2 (latest)
+
 - Root cause found: `new FixedMonitors(1920, 1080)` — wrong constructor args
   (needs DisplayInfo[]). Fixed to `new FixedMonitors(makeTestDisplays({ secondary: true }))`
   in beforeEach, and added makeTestDisplays to imports.

@@ -20,19 +20,19 @@ for non-authenticated traffic, while the hardened authentication flow is require
 connection. The complete CI matrix — typecheck, lint, and unit tests across all six workspaces —
 passes:
 
-| Workspace | Tests |
-|---|---|
-| `@kbm-remote/protocol` | 15 |
-| `@kbm-remote/network` | 51 |
-| `@kbm-remote/input-provider` | 98 |
-| `@kbm-remote/auth` | 1 |
-| Receiver (`apps/receiver`) | 40 |
-| Sender (`apps/sender`) | 17 |
-| **Total** | **222** |
+| Workspace                    | Tests   |
+| ---------------------------- | ------- |
+| `@kbm-remote/protocol`       | 15      |
+| `@kbm-remote/network`        | 51      |
+| `@kbm-remote/input-provider` | 98      |
+| `@kbm-remote/auth`           | 1       |
+| Receiver (`apps/receiver`)   | 40      |
+| Sender (`apps/sender`)       | 17      |
+| **Total**                    | **222** |
 
 Dependency auditing showed the workspace-wide vulnerability count drop from **42 vulnerabilities
-(12 high)** to **9 (4 high)**, all of which are now restricted to transitive *build-time and
-mobile-toolchain* dependencies (PostCSS via Expo Metro, `image-size` via Expo, `esbuild` as a
+(12 high)** to **9 (4 high)**, all of which are now restricted to transitive _build-time and
+mobile-toolchain_ dependencies (PostCSS via Expo Metro, `image-size` via Expo, `esbuild` as a
 dev dependency). No vulnerability affects the runtime receiver or the network path of either
 application. Electron itself was bumped from the end-of-line `^36.2.1` to `^42.9.0`.
 
@@ -51,30 +51,30 @@ pass** ran `pnpm audit` and inspected each flagged package for runtime reachabil
 
 Findings were ranked using CVSS-inspired severity, and every fix was verified by at least one
 new unit test. Where a full runtime reproduction was impossible on Linux CI (Windows-only
-attack paths), the fix is covered by *captured-command* tests that assert the exact shell
+attack paths), the fix is covered by _captured-command_ tests that assert the exact shell
 string the backend would execute.
 
 ---
 
 ## 3. Findings and Remediations
 
-| ID | Category | Severity | Finding | Fix |
-|----|----------|----------|---------|-----|
-| F1 | Protocol | High | DEFLATE zip-bomb — compressed payload cap missing | `inflateCapped` with 4 MiB ceiling in `codec/index.ts` |
-| F2 | Network | High | Pre-auth ping flooding — unauthenticated connections could park the gateway | Pre-auth watchdog + auth-timeout + flood guard in `WssGateway` |
-| F3 | Protocol | Critical | Replay of Authenticate frames | Challenge-response handshake + per-session seen-mid dedup |
-| F4 | Network | High | Per-IP connection flooding | `connectionsPerIp` limit + auth-failure ban window |
-| F5 | Secrets | Critical | Session tokens stored plaintext on disk | Salted SHA-256 at rest, constant-time verify |
-| F6 | MITM | Critical | No server-certificate pinning on the sender | `NodeTlsSocketFactory` + pin gate in `ClientConnection` + TOFU |
-| F7 | Pairing | Medium | Deterministic pairing codes (device-ID derived) | `randomBytes` uniform codes |
-| F8 | TLS | High | TLS identity regenerated on every restart | Identity persistence in `userData` |
-| F9 | Auth | Medium | No pre-auth watchdog | `AUTH_TIMEOUT_MS` + reset on Hello/Authenticate |
-| F10 | Protocol | Medium | Reliable-frame replay | `seenMids` deduplication per session |
-| F11 | Dependency | High | Electron EOL v36 with 12 high-severity CVEs | Bump to `^42.9.0` |
-| F12 | Dependency | Medium | 42 audit findings (12 high) workspace-wide | Resolved to 9 non-runtime findings |
-| F13 | Injection | High | PowerShell quote-escaping not proven; VK codes string-coerced | Doubling rule + numeric-only VK validation + captured-command tests |
-| F14 | Privilege | High | Pending/unapproved devices received default permissions | Pending devices receive `[]` (no permissions) |
-| F15 | Secrets | Low | GitHub token handling risk in automation | Token env-only, never committed |
+| ID  | Category   | Severity | Finding                                                                     | Fix                                                                 |
+| --- | ---------- | -------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| F1  | Protocol   | High     | DEFLATE zip-bomb — compressed payload cap missing                           | `inflateCapped` with 4 MiB ceiling in `codec/index.ts`              |
+| F2  | Network    | High     | Pre-auth ping flooding — unauthenticated connections could park the gateway | Pre-auth watchdog + auth-timeout + flood guard in `WssGateway`      |
+| F3  | Protocol   | Critical | Replay of Authenticate frames                                               | Challenge-response handshake + per-session seen-mid dedup           |
+| F4  | Network    | High     | Per-IP connection flooding                                                  | `connectionsPerIp` limit + auth-failure ban window                  |
+| F5  | Secrets    | Critical | Session tokens stored plaintext on disk                                     | Salted SHA-256 at rest, constant-time verify                        |
+| F6  | MITM       | Critical | No server-certificate pinning on the sender                                 | `NodeTlsSocketFactory` + pin gate in `ClientConnection` + TOFU      |
+| F7  | Pairing    | Medium   | Deterministic pairing codes (device-ID derived)                             | `randomBytes` uniform codes                                         |
+| F8  | TLS        | High     | TLS identity regenerated on every restart                                   | Identity persistence in `userData`                                  |
+| F9  | Auth       | Medium   | No pre-auth watchdog                                                        | `AUTH_TIMEOUT_MS` + reset on Hello/Authenticate                     |
+| F10 | Protocol   | Medium   | Reliable-frame replay                                                       | `seenMids` deduplication per session                                |
+| F11 | Dependency | High     | Electron EOL v36 with 12 high-severity CVEs                                 | Bump to `^42.9.0`                                                   |
+| F12 | Dependency | Medium   | 42 audit findings (12 high) workspace-wide                                  | Resolved to 9 non-runtime findings                                  |
+| F13 | Injection  | High     | PowerShell quote-escaping not proven; VK codes string-coerced               | Doubling rule + numeric-only VK validation + captured-command tests |
+| F14 | Privilege  | High     | Pending/unapproved devices received default permissions                     | Pending devices receive `[]` (no permissions)                       |
+| F15 | Secrets    | Low      | GitHub token handling risk in automation                                    | Token env-only, never committed                                     |
 
 Each finding is detailed below.
 
@@ -242,11 +242,11 @@ VK codes.
 
 **New tests** (`packages/input-provider/tests/keyboard.test.ts`, +3 cases, 98 tests pass):
 
-| Test | Assertion |
-|------|-----------|
+| Test                                                        | Assertion                                                                               |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | hostile payload with embedded quotes and command separators | doubled quotes balance; `Start-Process calc` and `$(...)` remain inert inside the value |
-| PowerShell meta-characters (`$env`, `$(whoami)`) | literal containment inside the quoted value |
-| non-numeric VK code injection attempt | thrown before any shell call; exec never invoked |
+| PowerShell meta-characters (`$env`, `$(whoami)`)            | literal containment inside the quoted value                                             |
+| non-numeric VK code injection attempt                       | thrown before any shell call; exec never invoked                                        |
 
 ---
 
@@ -275,12 +275,12 @@ receiver. Bumping to `^42.9.0` (current stable line) resolves the entire Electro
 
 `pnpm audit` before/after:
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Total findings | 42 | 9 |
-| High | 12 | 4 |
-| Moderate | 30 | 5 |
-| Reachable at runtime (receiver/network path) | 0 | 0 |
+| Metric                                       | Before | After |
+| -------------------------------------------- | ------ | ----- |
+| Total findings                               | 42     | 9     |
+| High                                         | 12     | 4     |
+| Moderate                                     | 30     | 5     |
+| Reachable at runtime (receiver/network path) | 0      | 0     |
 
 The remaining nine findings are confined to transitive build-tooling and the Expo mobile
 toolchain: PostCSS (via `@expo/metro-config` in the sender bundle step), `image-size` ≤ 2.0.2
@@ -293,13 +293,13 @@ bumped because overriding Expo's toolchain transients risks breaking the mobile 
 
 ## 11. Residual Risks and Recommendations
 
-| Residual risk | Status | Recommended follow-up |
-|---------------|--------|----------------------|
-| React Native has no equivalent of Node's `tls.checkServerIdentity`; pinning is Electron-only today | Documented, TOFU mitigates | Adopt `react-native-cert-pinner` or a custom TLS module for the RN build; wire the same `checkServerCertificate` option |
-| PostCSS/image-size transients in Expo toolchain | Non-runtime, tracked | Re-audit after next Expo SDK bump |
-| mDNS discovery is unauthenticated (pairing codes still gate trust) | By design | Add discovery-message signature in M8 |
-| Long-lived session tokens (even hashed at rest) | Hashing mitigates offline theft | Add token TTL + rolling re-authentication in M8 |
-| `robotjs`-era native binding surface not present — native adapters currently shell out (by design, with quoting defence) | Mitigated | Ship compiled native addon for Windows `SendInput` to remove the shell hop entirely |
+| Residual risk                                                                                                            | Status                          | Recommended follow-up                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| React Native has no equivalent of Node's `tls.checkServerIdentity`; pinning is Electron-only today                       | Documented, TOFU mitigates      | Adopt `react-native-cert-pinner` or a custom TLS module for the RN build; wire the same `checkServerCertificate` option |
+| PostCSS/image-size transients in Expo toolchain                                                                          | Non-runtime, tracked            | Re-audit after next Expo SDK bump                                                                                       |
+| mDNS discovery is unauthenticated (pairing codes still gate trust)                                                       | By design                       | Add discovery-message signature in M8                                                                                   |
+| Long-lived session tokens (even hashed at rest)                                                                          | Hashing mitigates offline theft | Add token TTL + rolling re-authentication in M8                                                                         |
+| `robotjs`-era native binding surface not present — native adapters currently shell out (by design, with quoting defence) | Mitigated                       | Ship compiled native addon for Windows `SendInput` to remove the shell hop entirely                                     |
 
 ---
 
@@ -319,4 +319,4 @@ three Win32 injection-defence cases described in §8.
 
 ---
 
-*Prepared by the project architect as part of Milestone 7 — Security Audit & Hardening.*
+_Prepared by the project architect as part of Milestone 7 — Security Audit & Hardening._

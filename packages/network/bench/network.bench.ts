@@ -6,11 +6,7 @@
  */
 import WebSocket, { WebSocketServer } from "ws";
 
-import {
-  ClientConnection,
-  type ClientEvents,
-  type ClientSocket,
-} from "../src/client";
+import { ClientConnection, type ClientEvents, type ClientSocket } from "../src/client";
 import { PING_INTERVAL_MS } from "../src/common";
 
 let wss: WebSocketServer;
@@ -50,29 +46,35 @@ async function handshake(): Promise<void> {
     if (!isBinary || !Buffer.isBuffer(data)) return;
     try {
       const { decodeFrame, encodeFrame, FrameType } = require("@kbm-remote/protocol");
-      decodeFrame(new Uint8Array(data)).then(({ frame }: { frame: { t: number; p: Record<string, unknown> } }) => {
-        if (frame.t === FrameType.Hello) {
-          // Ack immediately: sessionId assigned, no auth required.
-          encodeFrame({
-            t: FrameType.HelloAck,
-            mid: 0,
-            v: 1,
-            ts: Date.now(),
-            p: { sessionId: "bench-session", authRequired: false, serverTs: Date.now() },
-          }).then((buf) => serverSend(new Uint8Array(buf)));
-        } else if (frame.t === FrameType.Pong) {
-          encodeFrame({
-            t: FrameType.Pong,
-            mid: 0,
-            v: 1,
-            ts: Date.now(),
-            p: frame.p,
-          }).then((buf) => serverSend(new Uint8Array(buf)));
-        } else {
-          // Echo so RTT watchdog activity stays fresh.
-          serverSend(new Uint8Array(data));
-        }
-      }).catch(() => undefined);
+      decodeFrame(new Uint8Array(data))
+        .then(({ frame }: { frame: { t: number; p: Record<string, unknown> } }) => {
+          if (frame.t === FrameType.Hello) {
+            // Ack immediately: sessionId assigned, no auth required.
+            encodeFrame({
+              t: FrameType.HelloAck,
+              mid: 0,
+              v: 1,
+              ts: Date.now(),
+              p: {
+                sessionId: "bench-session",
+                authRequired: false,
+                serverTs: Date.now(),
+              },
+            }).then((buf) => serverSend(new Uint8Array(buf)));
+          } else if (frame.t === FrameType.Pong) {
+            encodeFrame({
+              t: FrameType.Pong,
+              mid: 0,
+              v: 1,
+              ts: Date.now(),
+              p: frame.p,
+            }).then((buf) => serverSend(new Uint8Array(buf)));
+          } else {
+            // Echo so RTT watchdog activity stays fresh.
+            serverSend(new Uint8Array(data));
+          }
+        })
+        .catch(() => undefined);
     } catch {
       serverSend(new Uint8Array(data));
     }
@@ -86,7 +88,10 @@ async function runSendBurst(): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error("handshake timeout")), 5000);
     const check = () => {
-      if (conn.connectionState === "connected" || conn.connectionState === "authenticated") {
+      if (
+        conn.connectionState === "connected" ||
+        conn.connectionState === "authenticated"
+      ) {
         clearTimeout(t);
         resolve();
       } else {
@@ -108,7 +113,9 @@ async function runSendBurst(): Promise<void> {
   // Drain async work.
   await new Promise((resolve) => setTimeout(resolve, 300));
   const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6;
-  console.log(`conn.send (mouseMove) throughput: ${Math.round((iters / elapsedMs) * 100) / 100} ops/ms`);
+  console.log(
+    `conn.send (mouseMove) throughput: ${Math.round((iters / elapsedMs) * 100) / 100} ops/ms`,
+  );
 
   conn.dispose();
 }
