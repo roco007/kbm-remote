@@ -18,7 +18,18 @@ await esbuild.build({
   jsx: "automatic",
   minify: !watch,
   sourcemap: watch,
+  // Milestone 6: emit a metafile so bundle composition can be audited
+  // (`pnpm bench:bundle` renders the top offenders from it).
+  metafile: true,
   logLevel: "info",
+}).then((result) => {
+  if (result.metafile) {
+    // Persist the metafile next to the bundle for `pnpm bench:bundle`.
+    import("node:fs").then(({ writeFileSync, mkdirSync }) => {
+      mkdirSync("dist/renderer", { recursive: true });
+      writeFileSync("dist/renderer/bundle.meta.json", JSON.stringify(result.metafile));
+    });
+  }
 });
 
 if (watch) {

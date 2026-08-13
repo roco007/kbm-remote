@@ -15,4 +15,5 @@
 
 export * from "./types";
 export * from "./codec";
+export * from "./codec/FastCodec";
 export * from "./validation";

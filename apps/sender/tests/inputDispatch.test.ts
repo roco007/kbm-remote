@@ -17,6 +17,7 @@ import {
   mouseScroll,
   presentationSlide,
   sendInput,
+  flushInputCoalescer,
   shortcut,
   textInput,
 } from "../src/services/inputDispatch";
@@ -48,6 +49,7 @@ const api = {
   clipboardSync,
   presentationSlide,
   isConnected,
+  flushInputCoalescer,
 };
 void api;
 
@@ -82,6 +84,7 @@ describe("inputDispatch — fire-and-forget frame emission", () => {
     installManager(true);
     const mod = await import("../src/services/inputDispatch.js");
     const ok = mod.mouseMove(3, -4);
+    mod.flushInputCoalescer();
     expect(ok).toBe(true);
     expect(sent[0]).toEqual({
       t: FrameType.MouseMove,
@@ -96,6 +99,7 @@ describe("inputDispatch — fire-and-forget frame emission", () => {
     void mod.mouseClick("left", "click");
     void mod.mouseClick("right", "dblclick");
     void mod.mouseClick("middle", "up");
+    mod.flushInputCoalescer();
     expect(
       sent.slice(0, 3).map((s) => (s as { p: { button: string; action: string } }).p),
     ).toEqual([
@@ -110,6 +114,7 @@ describe("inputDispatch — fire-and-forget frame emission", () => {
     const mod = await import("../src/services/inputDispatch.js");
     void mod.mouseScroll("vertical", 2);
     void mod.mouseScroll("horizontal", -1);
+    mod.flushInputCoalescer();
     expect(
       sent.slice(0, 2).map((s) => (s as { p: { axis: string; amount: number } }).p),
     ).toEqual([
@@ -159,6 +164,7 @@ describe("inputDispatch — fire-and-forget frame emission", () => {
     void mod.clipboardQuery();
     void mod.clipboardSync("text", "pasted");
     void mod.presentationSlide("next");
+    mod.flushInputCoalescer();
     const types = sent.slice(0, 3).map((s) => (s as { t: number }).t);
     expect(types).toEqual([
       FrameType.ClipboardQuery,
@@ -186,6 +192,7 @@ describe("inputDispatch — fire-and-forget frame emission", () => {
     installManager(true);
     const mod = await import("../src/services/inputDispatch.js");
     void mod.sendInput(FrameType.MouseMove, { dx: 1, dy: 1 });
+    mod.flushInputCoalescer();
     const frame = sent[0] as Record<string, unknown>;
     expect(frame).not.toHaveProperty("mid");
     expect(frame).not.toHaveProperty("v");

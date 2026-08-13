@@ -17,11 +17,14 @@
  * framework-free.
  */
 
-import { FrameType, type FrameEnvelope } from "@kbm-remote/protocol";
+import { FrameType, type FrameEnvelope, encodeFrameFast } from "@kbm-remote/protocol";
 
 import {
   CLOSE_CODES,
+  IDLE_DETECTION_AFTER_MS,
+  IDLE_HEARTBEAT_INTERVAL_MS,
   MAX_ACK_ATTEMPTS,
+  MAX_IDLE_HEARTBEAT_INTERVAL_MS,
   PING_INTERVAL_MS,
   PROTOCOL_MAJOR_VERSION,
   retryDelay,
@@ -101,6 +104,27 @@ export class ClientConnection {
   private pending = new Map<number, PendingFrame>();
   private pingTimer?: { clear(): void };
   private reconnectTimer?: { clear(): void };
+
+  // ── Adaptive heartbeat (Milestone 6) ──────────────────────────────────
+  /** Current ping cadence; grows while idle, snaps back on activity. */
+  private heartbeatIntervalMs = PING_INTERVAL_MS;
+  /** Wall-clock of the last outbound input frame or received pong. */
+  private lastOutboundActivityAt = 0;
+
+  private get heartbeatInterval(): number {
+    const idleFor = this.clock() - this.lastOutboundActivityAt;
+    if (idleFor < IDLE_DETECTION_AFTER_MS) return PING_INTERVAL_MS;
+    const steps = Math.min(
+      Math.floor((idleFor - IDLE_DETECTION_AFTER_MS) / IDLE_HEARTBEAT_INTERVAL_MS) + 1,
+      Math.ceil(
+        (MAX_IDLE_HEARTBEAT_INTERVAL_MS - PING_INTERVAL_MS) / IDLE_HEARTBEAT_INTERVAL_MS,
+      ),
+    );
+    return Math.min(
+      PING_INTERVAL_MS + steps * IDLE_HEARTBEAT_INTERVAL_MS,
+      MAX_IDLE_HEARTBEAT_INTERVAL_MS,
+    );
+  }
 
   readonly metrics = new LatencyMetrics();
   private readonly log = new Logger("client");
@@ -303,6 +327,9 @@ export class ClientConnection {
         if (typeof seq === "number") {
           this.metrics.pongReceived(seq);
           this.missedPongs = 0;
+          // Milestone 6: an inbound pong counts as round-trip activity —
+          // keeps the heartbeat fast if traffic flows in either direction.
+          this.lastOutboundActivityAt = this.clock();
         }
         this.emitMetrics();
         break;
@@ -387,20 +414,35 @@ export class ClientConnection {
 
   private startPingLoop(): void {
     this.clearPingTimer();
-    this.pingTimer = this.timers.setInterval(() => {
-      const seq = ++this.pingSeq;
-      this.metrics.pingSent(seq);
-      this.send({
-        t: FrameType.Ping,
-        ts: this.clock(),
-        p: { seq, clientTs: this.clock() },
-      });
-      this.missedPongs += 1;
-      if (this.missedPongs > 3) {
-        this.log.warn("missed pong threshold — reconnecting");
-        this.socket?.close(CLOSE_CODES.NotAuthenticated, "heartbeat failure");
-      }
-    }, PING_INTERVAL_MS);
+    this.heartbeatIntervalMs = PING_INTERVAL_MS;
+    this.pingTimer = this.timers.setInterval(() => this.tickPing(), PING_INTERVAL_MS);
+  }
+
+  /**
+   * Ping tick — §5.1, with the adaptive interval of Milestone 6. While no
+   * input frame has flowed for `IDLE_DETECTION_AFTER_MS`, the cadence backs
+   * off by `IDLE_HEARTBEAT_INTERVAL_MS` per round up to the cap; any
+   * outbound `send()` reschedules the timer at the fast cadence.
+   */
+  private tickPing(): void {
+    const interval = this.heartbeatInterval;
+    if (interval !== this.heartbeatIntervalMs) {
+      this.heartbeatIntervalMs = interval;
+      this.clearPingTimer();
+      this.pingTimer = this.timers.setInterval(() => this.tickPing(), interval);
+    }
+    const seq = ++this.pingSeq;
+    this.metrics.pingSent(seq);
+    this.send({
+      t: FrameType.Ping,
+      ts: this.clock(),
+      p: { seq, clientTs: this.clock() },
+    });
+    this.missedPongs += 1;
+    if (this.missedPongs > 3) {
+      this.log.warn("missed pong threshold — reconnecting");
+      this.socket?.close(CLOSE_CODES.NotAuthenticated, "heartbeat failure");
+    }
   }
 
   private clearPingTimer(): void {
@@ -419,6 +461,21 @@ export class ClientConnection {
   private sendFrame(frame: FrameEnvelope): void {
     if (!this.socket || this.socket.readyState !== READY_OPEN) {
       this.log.warn("dropping frame — socket not open", { type: frame.t });
+      return;
+    }
+    // Milestone 6: fire-and-forget frames (mid = 0) encode synchronously on
+    // the reused FastCodec instance — no per-send promise allocation and no
+    // fresh Encoder/Decoder per frame (the baseline codec pays both). This
+    // is the hot path for every mouse move and key press.
+    if (frame.mid === 0) {
+      try {
+        // Milestone 6: synchronous fast path — no per-send promise, reused
+        // msgpackr Encoder/Decoder in encodeFrameFast.
+        this.lastOutboundActivityAt = this.clock();
+        this.socket.send(encodeFrameFast(frame));
+      } catch (error) {
+        this.log.error("failed to encode frame", { error: String(error) });
+      }
       return;
     }
     import("@kbm-remote/protocol")

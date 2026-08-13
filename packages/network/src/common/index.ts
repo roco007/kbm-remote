@@ -23,6 +23,18 @@ export const AUTH_WINDOW_MS = 30_000;
 /** Ping interval — sender-driven (receiver simply replies). */
 export const PING_INTERVAL_MS = 5_000;
 
+/**
+ * Adaptive heartbeat (Milestone 6, §B.2): when no outbound input frame has
+ * been sent for `IDLE_DETECTION_AFTER_MS`, the sender escalates the ping
+ * interval by `IDLE_HEARTBEAT_INTERVAL_MS` per successful round trip until
+ * `MAX_IDLE_HEARTBEAT_INTERVAL_MS`. Any outbound `send()` instantly restores
+ * the fast interval. This cuts radio tail-state wake-ups on battery-powered
+ * senders while the user is idle.
+ */
+export const IDLE_DETECTION_AFTER_MS = 20_000;
+export const IDLE_HEARTBEAT_INTERVAL_MS = 15_000;
+export const MAX_IDLE_HEARTBEAT_INTERVAL_MS = 60_000;
+
 /** Silence before the watchdog treats the connection as dead. */
 export const SILENCE_WATCHDOG_MS = 15_000;
 

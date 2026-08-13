@@ -12,3 +12,4 @@ export {
   type FrameResult,
   type PendingFrame,
 } from "./ClientConnection";
+export { FrameCoalescer } from "./FrameCoalescer";

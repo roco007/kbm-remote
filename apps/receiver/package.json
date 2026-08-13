@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "electron dist/main/main.js",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist .turbo",
+    "bench:bundle": "node scripts/bundle-analysis.mjs"
   },
   "dependencies": {
     "@kbm-remote/auth": "workspace:*",

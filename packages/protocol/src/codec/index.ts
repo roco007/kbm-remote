@@ -42,7 +42,7 @@ export interface Compressor {
   inflate(compressed: Uint8Array): Uint8Array;
 }
 
-let compressor: Compressor = createNodeCompressor();
+export let compressor: Compressor = createNodeCompressor();
 
 /** Replace the DEFLATE backend (e.g., pako on React Native). */
 export function setCompressor(next: Compressor): void {

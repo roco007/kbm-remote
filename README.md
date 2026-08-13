@@ -73,6 +73,7 @@ Authoritative design artifacts live in `docs/` (copied from the design phase):
 - **Clipboard / Keyboard / Mouse Subsystem Docs** — input subsystem designs (M3)
 - **Mobile Sender (M4)** — Expo app architecture and screens
 - **Receiver UI (M5)** — Electron dashboard, tray, pairing, permissions
+- **Optimization Benchmarks (M6)** — FastCodec, adaptive heartbeats, input coalescing
 
 ## Roadmap
 
@@ -85,7 +86,8 @@ Authoritative design artifacts live in `docs/` (copied from the design phase):
 | M4        | Mobile sender — 8 M3 screens, Zustand, React Navigation       |
 | M5        | Electron receiver dashboard — tray, auto-start, pairing,      |
 |           | permissions, logs, settings, connection monitoring            |
-| M6        | Hardening, E2E tests, release packaging                     |
+| M6        | Performance optimization — FastCodec, adaptive heartbeats,    |
+|           | input coalescing, bundle analysis (see Optimization Benchmarks)|
 
 ## License
 
