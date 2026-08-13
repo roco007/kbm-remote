@@ -369,6 +369,23 @@ export class WssGateway {
     return this.sessions.get(ws);
   }
 
+  /**
+   * Resolve a session by its stable id — used by the input permission gate
+   * and the dashboard. Linear scan; the session table is bounded by the
+   * number of connected devices, so no index is needed.
+   */
+  sessionById(sessionId: string): GatewaySession | undefined {
+    for (const session of this.sessions.values()) {
+      if (session.sessionId === sessionId) return session;
+    }
+    return undefined;
+  }
+
+  /** Live snapshot of every gateway session. */
+  allSessions(): IterableIterator<GatewaySession> {
+    return this.sessions.values();
+  }
+
   // ── Sending primitives ───────────────────────────────────────────────
 
   /** In-flight encode/send promises per socket — used by close() to flush. */

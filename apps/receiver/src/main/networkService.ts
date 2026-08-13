@@ -25,6 +25,10 @@ import { createServer as createTlsServer } from "node:https";
 import { AuthMiddleware, Logger, WssGateway } from "@kbm-remote/network";
 import { FrameType } from "@kbm-remote/protocol";
 
+import { createInputContainer, createInputService } from "./inputModule";
+
+import type { Container } from "@kbm-remote/input-provider";
+import type { GatewaySession } from "@kbm-remote/network";
 import type { AuthStore } from "@kbm-remote/network";
 
 const serviceLog = new Logger("networkService");
@@ -54,10 +58,14 @@ const DEFAULT_PORT = 27001;
 export class NetworkService {
   private readonly gateway: WssGateway;
   private readonly auth: AuthMiddleware;
+  private readonly inputService: import("./inputService").InputService;
   private tlsServer: import("node:https").Server | null = null;
   private readonly deviceId: string;
 
-  constructor(private readonly options: NetworkServiceOptions = {}) {
+  constructor(
+    private readonly options: NetworkServiceOptions = {},
+    inputContainer: Container = createInputContainer(),
+  ) {
     this.deviceId = options.deviceId ?? "";
     const authStore = options.authStore ?? createDefaultAuthStore();
     this.auth = new AuthMiddleware({ store: authStore });
@@ -68,7 +76,14 @@ export class NetworkService {
       maxFrameBytes: 16 * 1024 * 1024,
     });
 
+    // Mouse input handlers — the session lookup reads the gateway's auth
+    // state, which the Authenticate handler populates on success.
+    this.inputService = createInputService(inputContainer, (sessionId) =>
+      this.gateway.sessionById(sessionId),
+    );
+
     this.registerProtocolHandlers();
+    this.inputService.registerHandlers(this.gateway.frameRouter);
   }
 
   /**
@@ -121,6 +136,11 @@ export class NetworkService {
 
   get sessionCount(): number {
     return this.gateway.sessionCount;
+  }
+
+  /** Live session metadata for the dashboard (identity, permissions, latency). */
+  sessions(): IterableIterator<GatewaySession> {
+    return this.gateway.allSessions();
   }
 
   private registerProtocolHandlers(): void {

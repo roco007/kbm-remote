@@ -42,3 +42,4 @@ release/
 # Expo prebuild artifacts (regenerate with pnpm prebuild)
 apps/sender/android/
 apps/sender/ios/
+*.tsbuildinfo
