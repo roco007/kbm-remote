@@ -54,7 +54,7 @@ jobs:
 
       - name: Build receiver installer (${{ matrix.target }})
         working-directory: apps/receiver
-        run: pnpm exec electron-builder --${{ matrix.target }} --config electron-builder.yml
+        run: pnpm exec electron-builder --target ${{ matrix.target }} --config electron-builder.yml
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
