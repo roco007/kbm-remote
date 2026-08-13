@@ -45,16 +45,60 @@ export type KeyId =
   | MediaKey;
 
 export type LetterKey =
-  | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L"
-  | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X"
-  | "Y" | "Z"
-  | "KeyA" | "KeyB" | "KeyC" | "KeyD" | "KeyE" | "KeyF" | "KeyG" | "KeyH"
-  | "KeyI" | "KeyJ" | "KeyK" | "KeyL" | "KeyM" | "KeyN" | "KeyO" | "KeyP"
-  | "KeyQ" | "KeyR" | "KeyS" | "KeyT" | "KeyU" | "KeyV" | "KeyW" | "KeyX"
-  | "KeyY" | "KeyZ";
+  | "A"
+  | "B"
+  | "C"
+  | "D"
+  | "E"
+  | "F"
+  | "G"
+  | "H"
+  | "I"
+  | "J"
+  | "K"
+  | "L"
+  | "M"
+  | "N"
+  | "O"
+  | "P"
+  | "Q"
+  | "R"
+  | "S"
+  | "T"
+  | "U"
+  | "V"
+  | "W"
+  | "X"
+  | "Y"
+  | "Z"
+  | "KeyA"
+  | "KeyB"
+  | "KeyC"
+  | "KeyD"
+  | "KeyE"
+  | "KeyF"
+  | "KeyG"
+  | "KeyH"
+  | "KeyI"
+  | "KeyJ"
+  | "KeyK"
+  | "KeyL"
+  | "KeyM"
+  | "KeyN"
+  | "KeyO"
+  | "KeyP"
+  | "KeyQ"
+  | "KeyR"
+  | "KeyS"
+  | "KeyT"
+  | "KeyU"
+  | "KeyV"
+  | "KeyW"
+  | "KeyX"
+  | "KeyY"
+  | "KeyZ";
 
-export type DigitKey =
-  | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+export type DigitKey = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
 
 /** Punctuation / symbol keys named after the US physical layout. */
 export type PrintableKey =
@@ -73,31 +117,71 @@ export type PrintableKey =
   | "Pause"
   | "PrintScreen"
   | "Backquote"
-  | "Minus" | "Equal" | "BracketLeft" | "BracketRight" | "Backslash"
-  | "Semicolon" | "Quote" | "Comma" | "Period" | "Slash"
-  | "NumPad0" | "NumPad1" | "NumPad2" | "NumPad3" | "NumPad4" | "NumPad5"
-  | "NumPad6" | "NumPad7" | "NumPad8" | "NumPad9"
+  | "Minus"
+  | "Equal"
+  | "BracketLeft"
+  | "BracketRight"
+  | "Backslash"
+  | "Semicolon"
+  | "Quote"
+  | "Comma"
+  | "Period"
+  | "Slash"
+  | "NumPad0"
+  | "NumPad1"
+  | "NumPad2"
+  | "NumPad3"
+  | "NumPad4"
+  | "NumPad5"
+  | "NumPad6"
+  | "NumPad7"
+  | "NumPad8"
+  | "NumPad9"
   | "NumLock";
 
 export type ModifierKey =
-  | "ControlLeft" | "ControlRight"
-  | "ShiftLeft" | "ShiftRight"
-  | "AltLeft" | "AltRight"
-  | "MetaLeft" | "MetaRight";
+  | "ControlLeft"
+  | "ControlRight"
+  | "ShiftLeft"
+  | "ShiftRight"
+  | "AltLeft"
+  | "AltRight"
+  | "MetaLeft"
+  | "MetaRight";
 
 export type FunctionKey =
-  | "F1" | "F2" | "F3" | "F4" | "F5" | "F6" | "F7" | "F8" | "F9" | "F10"
-  | "F11" | "F12" | "F13" | "F14" | "F15" | "F16" | "F17" | "F18" | "F19"
-  | "F20" | "F21" | "F22" | "F23" | "F24";
+  | "F1"
+  | "F2"
+  | "F3"
+  | "F4"
+  | "F5"
+  | "F6"
+  | "F7"
+  | "F8"
+  | "F9"
+  | "F10"
+  | "F11"
+  | "F12"
+  | "F13"
+  | "F14"
+  | "F15"
+  | "F16"
+  | "F17"
+  | "F18"
+  | "F19"
+  | "F20"
+  | "F21"
+  | "F22"
+  | "F23"
+  | "F24";
 
-export type ArrowKey =
-  | "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
+export type ArrowKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
 
 export type EditingKey = PrintableKey; // editing keys are printable-key names
 
 /** Abstract media keys — mapped to OS media mechanisms by adapters. */
 export type MediaKey =
-  | "volumeUp" | "volumeDown" | "mute" | "playPause" | "prevTrack" | "nextTrack";
+  "volumeUp" | "volumeDown" | "mute" | "playPause" | "prevTrack" | "nextTrack";
 
 /** All media key identifiers, for validation. */
 export const MEDIA_KEYS: readonly MediaKey[] = [
@@ -167,16 +251,12 @@ export const MODIFIER_KEYS: readonly ModifierKey[] = [
 
 /** Is this identifier one of the eight modifier keys? */
 export function isModifierKey(key: unknown): key is ModifierKey {
-  return (
-    typeof key === "string" && (MODIFIER_KEYS as readonly string[]).includes(key)
-  );
+  return typeof key === "string" && (MODIFIER_KEYS as readonly string[]).includes(key);
 }
 
 /** Is this identifier one of the abstract media keys? */
 export function isMediaKey(value: unknown): value is MediaKey {
-  return typeof value === "string" && (
-    MEDIA_KEYS as readonly string[]
-  ).includes(value);
+  return typeof value === "string" && (MEDIA_KEYS as readonly string[]).includes(value);
 }
 
 /**

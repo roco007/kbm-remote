@@ -9,8 +9,10 @@
  *   4. The DI container (inputModule) produces a real pipeline graph.
  */
 import {
+  ClipboardController,
   FixedMonitors,
   KeyboardController,
+  MockClipboardProvider,
   MockKeyboardProvider,
   MockMouseProvider,
   makeTestDisplays,
@@ -21,6 +23,8 @@ import { FrameType } from "@kbm-remote/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  clipboardControllerToken,
+  clipboardProviderToken,
   controllerToken,
   createInputContainer as _reexportCheck,
   createInputContainer,
@@ -239,6 +243,8 @@ describe("InputService", () => {
       FrameType.TextInput,
       FrameType.Shortcut,
       FrameType.MediaKey,
+      FrameType.ClipboardSync,
+      FrameType.ClipboardQuery,
     ];
     for (const t of types) {
       expect(router["handlers"].has(t)).toBe(true);
@@ -395,6 +401,134 @@ describe("InputService — keyboard subsystem", () => {
   });
 });
 
+// ── clipboard integration ──────────────────────────────────────────────
+
+describe("InputService — clipboard subsystem", () => {
+  let clipboard: ClipboardController;
+  let cbProvider: MockClipboardProvider;
+  let service: InputService;
+  let router: FrameRouter;
+  let dispatch: (
+    session: GatewaySession,
+    f: { t: number; mid: number; v: number; ts: number; p: Record<string, unknown> },
+    overrideCtx?: FrameContext & { __closed: number | null },
+  ) => Promise<{ ctx: FrameContext; sent: unknown[] }>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    cbProvider = new MockClipboardProvider();
+    clipboard = new ClipboardController({ provider: cbProvider });
+    const container = createInputContainer();
+    container.register(clipboardControllerToken, () => clipboard);
+    container.register(providerToken, () => new MockMouseProvider());
+    container.register(monitorToken, () => new FixedMonitors(makeTestDisplays()));
+
+    let currentSession: GatewaySession | undefined;
+    service = new InputService(
+      container.resolve(controllerToken) as MouseController,
+      (sessionId) =>
+        currentSession?.sessionId === sessionId ? currentSession : undefined,
+      undefined,
+      undefined,
+      clipboard,
+    );
+    router = makeRouter();
+    service.registerHandlers(router);
+
+    dispatch = async (session, f, overrideCtx) => {
+      currentSession = session;
+      const { ctx, sent } = makeCtx(session);
+      const active = overrideCtx ?? ctx;
+      const handler = router["handlers"].get(f.t);
+      if (handler) await handler(f as never, active);
+      return Promise.resolve({ ctx: active, sent });
+    };
+  });
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+  });
+
+  it("closes with 4005 when clipboard frames arrive without authentication", async () => {
+    const session = makeSession({ authenticated: false });
+    const { ctx } = captureCtx();
+    await dispatch(
+      session,
+      env(FrameType.ClipboardSync, { kind: "text", data: "x" }),
+      ctx,
+    );
+    expect(ctx.__closed).toBe(4005);
+  });
+
+  it("rejects authenticated sockets lacking the clipboard permission", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["keyboard"] });
+    const { ctx } = captureCtx();
+    await dispatch(
+      session,
+      env(FrameType.ClipboardSync, { kind: "text", data: "x" }),
+      ctx,
+    );
+    expect(ctx.__closed).toBe(4005);
+  });
+
+  it("gates clipboard frames separately from keyboard and media", async () => {
+    const kbOnly = makeSession({ authenticated: true, permissions: ["keyboard"] });
+    const { ctx: ctxKb } = captureCtx();
+    await dispatch(
+      kbOnly,
+      env(FrameType.ClipboardSync, { kind: "text", data: "x" }),
+      ctxKb,
+    );
+    expect(ctxKb.__closed).toBe(4005);
+    expect(cbProvider.calls).toHaveLength(0);
+  });
+
+  it("applies a remote clipboard sync to the OS clipboard", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["clipboard"] });
+    await dispatch(
+      session,
+      env(FrameType.ClipboardSync, { kind: "text", data: "synced text" }),
+    );
+    const write = cbProvider.calls.find((c) => c.method === "write");
+    expect(write).toBeDefined();
+    expect((write as { input: { data: string } }).input.data).toBe("synced text");
+  });
+
+  it("responds to a clipboard query with the local clipboard", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["clipboard"] });
+    const { normalizeClipboardContent } = await import("@kbm-remote/input-provider");
+    cbProvider.seed(normalizeClipboardContent({ kind: "text", data: "receiver copy" }));
+    const { sent } = await dispatch(session, env(FrameType.ClipboardQuery, {}));
+    await vi.runAllTimersAsync();
+    const reply = sent.find((f) => (f as { t: number }).t === FrameType.ClipboardSync);
+    expect(reply).toBeDefined();
+    expect((reply as { p: { kind: string; data: string } }).p.data).toBe("receiver copy");
+  });
+
+  it("skips the query reply when the clipboard is empty", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["clipboard"] });
+    const { sent } = await dispatch(session, env(FrameType.ClipboardQuery, {}));
+    await vi.runAllTimersAsync();
+    expect(sent).toHaveLength(0);
+  });
+
+  it("drops oversized and invalid clipboard payloads without OS side effects", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["clipboard"] });
+    await dispatch(
+      session,
+      env(FrameType.ClipboardSync, { kind: "text", data: "x".repeat(70_000) }),
+    );
+    await dispatch(
+      session,
+      env(FrameType.ClipboardSync, { kind: "image", data: "bm90YXBuZw==" }),
+    );
+    await dispatch(session, env(FrameType.ClipboardSync, { kind: "html", data: "x" }));
+    await dispatch(session, env(FrameType.ClipboardSync, { kind: 42, data: "x" }));
+    expect(cbProvider.calls).toHaveLength(0);
+  });
+});
+
 describe("inputModule DI container", () => {
   it("resolves the real pipeline graph (monitors → controller → provider)", async () => {
     const container = createInputContainer();
@@ -402,12 +536,18 @@ describe("inputModule DI container", () => {
     // deterministic test fixture before anything is resolved.
     container.register(monitorToken, () => new FixedMonitors(makeTestDisplays()));
     container.register(providerToken, () => new MockMouseProvider());
+    container.register(clipboardProviderToken, () => new MockClipboardProvider());
     const controller = container.resolve(controllerToken);
     const displays = await container.resolve(monitorToken).getDisplays();
 
     expect(displays.length).toBeGreaterThan(0);
     expect(displays[0]!.scaleFactor).toBeGreaterThan(0);
     expect(controller).toBeDefined();
+    // The clipboard graph also resolves — and, in CI without OS clipboard
+    // tooling, degrades gracefully to an unavailable mock instead of throwing.
+    expect(container.resolve(clipboardControllerToken)).toBeInstanceOf(
+      ClipboardController,
+    );
     // The controller was built with the container's own provider (not the test
     // factory's, which may fail in CI without a display server — that's fine,
     // construction is side-effect-free).

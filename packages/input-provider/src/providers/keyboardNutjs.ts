@@ -20,7 +20,6 @@ import {
   PressInput,
   ReleaseInput,
   TypeTextInput,
-  type KeyId,
 } from "../keyboard";
 import { InputError } from "../mouse";
 
@@ -47,10 +46,7 @@ async function loadNutJsKeyboard(): Promise<NutJsKeyboard> {
     }
     return nut.keyboard;
   } catch (cause) {
-    throw new InputError(
-      "nut.js keyboard bindings unavailable",
-      "bindingsUnavailable",
-    );
+    throw new InputError("nut.js keyboard bindings unavailable", "bindingsUnavailable");
   }
 }
 
@@ -78,36 +74,68 @@ function requireEnum(keyEnum: Record<string, number>, name: string): string | nu
 function toNutKey(keyId: unknown, keyEnum: Record<string, number>): string | number {
   switch (String(keyId)) {
     // Letters and digits
-    case "0": case "1": case "2": case "3": case "4":
-    case "5": case "6": case "7": case "8": case "9":
+    case "0":
+    case "1":
+    case "2":
+    case "3":
+    case "4":
+    case "5":
+    case "6":
+    case "7":
+    case "8":
+    case "9":
       return requireEnum(keyEnum, `Num${keyId}`);
-    case "Space": return requireEnum(keyEnum, "Space");
-    case "Backquote": return requireEnum(keyEnum, "Grave");
-    case "BracketLeft": return requireEnum(keyEnum, "LeftBracket");
-    case "BracketRight": return requireEnum(keyEnum, "RightBracket");
-    case "Quote": return requireEnum(keyEnum, "Quote");
-    case "PrintScreen": return requireEnum(keyEnum, "Print");
+    case "Space":
+      return requireEnum(keyEnum, "Space");
+    case "Backquote":
+      return requireEnum(keyEnum, "Grave");
+    case "BracketLeft":
+      return requireEnum(keyEnum, "LeftBracket");
+    case "BracketRight":
+      return requireEnum(keyEnum, "RightBracket");
+    case "Quote":
+      return requireEnum(keyEnum, "Quote");
+    case "PrintScreen":
+      return requireEnum(keyEnum, "Print");
     // Modifiers
-    case "ControlLeft": return requireEnum(keyEnum, "LeftControl");
-    case "ControlRight": return requireEnum(keyEnum, "RightControl");
-    case "ShiftLeft": return requireEnum(keyEnum, "LeftShift");
-    case "ShiftRight": return requireEnum(keyEnum, "RightShift");
-    case "AltLeft": return requireEnum(keyEnum, "LeftAlt");
-    case "AltRight": return requireEnum(keyEnum, "RightAlt");
-    case "MetaLeft": return requireEnum(keyEnum, "LeftWin");
-    case "MetaRight": return requireEnum(keyEnum, "RightWin");
+    case "ControlLeft":
+      return requireEnum(keyEnum, "LeftControl");
+    case "ControlRight":
+      return requireEnum(keyEnum, "RightControl");
+    case "ShiftLeft":
+      return requireEnum(keyEnum, "LeftShift");
+    case "ShiftRight":
+      return requireEnum(keyEnum, "RightShift");
+    case "AltLeft":
+      return requireEnum(keyEnum, "LeftAlt");
+    case "AltRight":
+      return requireEnum(keyEnum, "RightAlt");
+    case "MetaLeft":
+      return requireEnum(keyEnum, "LeftWin");
+    case "MetaRight":
+      return requireEnum(keyEnum, "RightWin");
     // Arrows
-    case "ArrowUp": return requireEnum(keyEnum, "Up");
-    case "ArrowDown": return requireEnum(keyEnum, "Down");
-    case "ArrowLeft": return requireEnum(keyEnum, "Left");
-    case "ArrowRight": return requireEnum(keyEnum, "Right");
+    case "ArrowUp":
+      return requireEnum(keyEnum, "Up");
+    case "ArrowDown":
+      return requireEnum(keyEnum, "Down");
+    case "ArrowLeft":
+      return requireEnum(keyEnum, "Left");
+    case "ArrowRight":
+      return requireEnum(keyEnum, "Right");
     // Media — sent through the same key enum (AudioMute … AudioNext)
-    case "volumeUp": return requireEnum(keyEnum, "AudioVolUp");
-    case "volumeDown": return requireEnum(keyEnum, "AudioVolDown");
-    case "mute": return requireEnum(keyEnum, "AudioMute");
-    case "playPause": return requireEnum(keyEnum, "AudioPlay");
-    case "prevTrack": return requireEnum(keyEnum, "AudioPrev");
-    case "nextTrack": return requireEnum(keyEnum, "AudioNext");
+    case "volumeUp":
+      return requireEnum(keyEnum, "AudioVolUp");
+    case "volumeDown":
+      return requireEnum(keyEnum, "AudioVolDown");
+    case "mute":
+      return requireEnum(keyEnum, "AudioMute");
+    case "playPause":
+      return requireEnum(keyEnum, "AudioPlay");
+    case "prevTrack":
+      return requireEnum(keyEnum, "AudioPrev");
+    case "nextTrack":
+      return requireEnum(keyEnum, "AudioNext");
     default:
       // Function keys and remaining layout names map 1:1 (F1…F24, Tab,
       // Enter, Backspace, …) because the grammar was chosen to match nut.js.
@@ -119,19 +147,13 @@ export class NutJsKeyboardProvider implements KeyboardProvider {
   readonly name = "nutjs";
 
   async press(input: PressInput): Promise<void> {
-    const [kb, keyEnum] = await Promise.all([
-      loadNutJsKeyboard(),
-      resolveKeyEnum(),
-    ]);
+    const [kb, keyEnum] = await Promise.all([loadNutJsKeyboard(), resolveKeyEnum()]);
     const keys = input.keys.map((k) => toNutKey(k, keyEnum));
     await kb.pressKey(...keys);
   }
 
   async release(input: ReleaseInput): Promise<void> {
-    const [kb, keyEnum] = await Promise.all([
-      loadNutJsKeyboard(),
-      resolveKeyEnum(),
-    ]);
+    const [kb, keyEnum] = await Promise.all([loadNutJsKeyboard(), resolveKeyEnum()]);
     await kb.releaseKey(toNutKey(input.key, keyEnum));
   }
 
@@ -143,10 +165,7 @@ export class NutJsKeyboardProvider implements KeyboardProvider {
   }
 
   async mediaKey(input: MediaKeyInput): Promise<void> {
-    const [kb, keyEnum] = await Promise.all([
-      loadNutJsKeyboard(),
-      resolveKeyEnum(),
-    ]);
+    const [kb, keyEnum] = await Promise.all([loadNutJsKeyboard(), resolveKeyEnum()]);
     const key = toNutKey(input.key, keyEnum);
     await kb.pressKey(key);
     await kb.releaseKey(key);

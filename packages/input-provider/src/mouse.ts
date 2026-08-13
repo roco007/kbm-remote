@@ -126,7 +126,12 @@ export class InputError extends Error {
       | "emptyText"
       | "invalidMediaKey"
       | "unsupportedKey"
-      | "bindingsUnavailable",
+      | "bindingsUnavailable"
+      | "invalidClipboard"
+      | "clipboardTooLarge"
+      | "invalidBase64"
+      | "invalidImage"
+      | "clipboardConflict",
   ) {
     super(message);
   }

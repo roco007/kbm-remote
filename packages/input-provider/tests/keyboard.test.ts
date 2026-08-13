@@ -7,6 +7,7 @@
  * tests that inject the same mock surface into the full DI graph.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import {
   KeyboardController,
   MEDIA_KEYS,
@@ -221,9 +222,7 @@ describe("KeyboardController — text and media", () => {
   it("delegates abstract media keys and rejects unknown ones", async () => {
     const { provider, controller } = makeController();
     await controller.mediaKey({ key: "volumeUp" });
-    expect(provider.calls).toEqual([
-      { method: "mediaKey", input: { key: "volumeUp" } },
-    ]);
+    expect(provider.calls).toEqual([{ method: "mediaKey", input: { key: "volumeUp" } }]);
     await expect(controller.mediaKey({ key: "volumeMax" })).rejects.toThrow();
   });
 });

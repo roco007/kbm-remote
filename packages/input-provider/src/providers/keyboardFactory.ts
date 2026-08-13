@@ -11,11 +11,11 @@
  * `kind: "unavailable"` with a human-readable note, so the receiver can
  * still launch and surface a clear status message instead of crashing.
  */
-import { KeyboardProvider } from "../keyboard";
-import { KeyboardController } from "../controllers/KeyboardController";
 import { MockKeyboardProvider } from "./keyboardMock";
 import { NativeKeyboardProvider } from "./keyboardNative";
 import { NutJsKeyboardProvider } from "./keyboardNutjs";
+import { KeyboardController } from "../controllers/KeyboardController";
+import { KeyboardProvider } from "../keyboard";
 
 export type KeyboardProviderKind = "nutjs" | "native" | "mock" | "unavailable";
 

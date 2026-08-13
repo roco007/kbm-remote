@@ -20,6 +20,7 @@
  * keeps the input path at the lowest possible latency.
  */
 import {
+  ClipboardController,
   isDragButton,
   isMediaKey,
   isMouseButton,
@@ -32,6 +33,7 @@ import { FrameType, type FrameEnvelope } from "@kbm-remote/protocol";
 export const MOUSE_PERMISSION = "mouse";
 export const KEYBOARD_PERMISSION = "keyboard";
 export const MEDIA_PERMISSION = "media";
+export const CLIPBOARD_PERMISSION = "clipboard";
 
 /** Optional logger — keeps the service testable without pulling a framework. */
 export interface ServiceLog {
@@ -51,6 +53,7 @@ export class InputService {
     private readonly sessionLookup: (sessionId: string) => GatewaySession | undefined,
     private readonly log: ServiceLog = consoleLog,
     private readonly keyboard: KeyboardController | null = null,
+    private readonly clipboard: ClipboardController | null = null,
   ) {}
 
   /** Registers every mouse and keyboard frame handler with the gateway's frame router. */
@@ -103,6 +106,14 @@ export class InputService {
       this.handleMediaKey(f, ctx);
       return { ok: true };
     });
+    router.register(FrameType.ClipboardSync, async (f, ctx) => {
+      this.handleClipboardSync(f, ctx);
+      return { ok: true };
+    });
+    router.register(FrameType.ClipboardQuery, async (f, ctx) => {
+      this.handleClipboardQuery(f, ctx);
+      return { ok: true };
+    });
   }
 
   // ── permission gate ──────────────────────────────────────────────────
@@ -117,6 +128,10 @@ export class InputService {
 
   private hasMediaPermission(ctx: FrameContext): boolean {
     return this.checkPermission(ctx, MEDIA_PERMISSION);
+  }
+
+  private hasClipboardPermission(ctx: FrameContext): boolean {
+    return this.checkPermission(ctx, CLIPBOARD_PERMISSION);
   }
 
   /** Shared permission gate used by both input subsystems. */
@@ -337,6 +352,79 @@ export class InputService {
     }
     void kb.mediaKey({ key: p.key }).catch((err: unknown) => {
       this.log.warn(`media key failed: ${(err as Error).message}`);
+    });
+  }
+
+  // ── clipboard ────────────────────────────────────────────────────────
+
+  /**
+   * ClipboardSync (0x70) — sender pushes content to the receiver's OS
+   * clipboard. Manual when the user taps "send clipboard", automatic when
+   * the sender's clipboard observer detects a change. Conflicts (a local
+   * edit in the way) are dropped with a log line, never sent back over the
+   * wire — the frame is fire-and-forget.
+   */
+  private handleClipboardSync(f: FrameEnvelope, ctx: FrameContext): void {
+    if (!this.hasClipboardPermission(ctx)) return;
+    const cb = this.clipboard;
+    if (!cb) {
+      this.log.warn("clipboard sync rejected: clipboard controller unavailable");
+      return;
+    }
+    const p = f.p as Record<string, unknown> | undefined;
+    void cb.applyRemoteWrite(p ?? {}).catch((err: unknown) => {
+      const e = err as { reason?: string; message?: string };
+      if (e?.reason === "clipboardConflict") {
+        // Local clipboard was edited after the last sync — the remote write
+        // would have wiped a local edit. Drop it and tell the sender once.
+        this.log.warn(
+          "clipboard sync dropped: receiver clipboard changed locally (conflict — local edit wins)",
+        );
+        ctx.send({
+          t: FrameType.Nack,
+          mid: f.mid,
+          v: f.v,
+          ts: Date.now(),
+          p: { reason: "clipboardConflict" },
+        });
+        return;
+      }
+      this.log.warn(`clipboard sync rejected: ${e?.message ?? String(err)}`);
+    });
+  }
+
+  /**
+   * ClipboardQuery (0x71) — sender asks for the receiver's current clipboard
+   * (manual "grab clipboard" action). Replies with a ClipboardSync frame in
+   * the receiver→sender direction; empty clipboards are skipped entirely.
+   */
+  private handleClipboardQuery(f: FrameEnvelope, ctx: FrameContext): void {
+    if (!this.hasClipboardPermission(ctx)) return;
+    const cb = this.clipboard;
+    if (!cb) {
+      this.log.warn("clipboard query rejected: clipboard controller unavailable");
+      return;
+    }
+    void cb.pushOutbound().then(async (out) => {
+      if (!out) return; // empty clipboard — nothing to send
+      try {
+        const payload = (await cb.encryptForTransport(out.content)) as Record<
+          string,
+          unknown
+        >;
+        ctx.send({
+          t: FrameType.ClipboardSync,
+          mid: 0,
+          v: f.v,
+          ts: Date.now(),
+          p: payload,
+        });
+        this.log.info(
+          `clipboard pushed to sender (${out.content.kind}, ${out.content.sha256.slice(0, 8)}…)`,
+        );
+      } catch (err) {
+        this.log.warn(`clipboard push failed: ${(err as Error).message}`);
+      }
     });
   }
 }

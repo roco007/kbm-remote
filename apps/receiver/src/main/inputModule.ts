@@ -16,13 +16,16 @@
  * production wiring and the test wiring structurally identical.
  */
 import {
+  ClipboardController,
   Container,
   KeyboardController,
   MouseController,
   Token,
+  createClipboardProvider,
   createKeyboardProvider,
   createMouseProvider,
   type Container as ContainerType,
+  type ClipboardProvider,
   type KeyboardProvider,
   type MonitorApi,
   type MouseProvider,
@@ -36,6 +39,10 @@ export const controllerToken = new Token<MouseController>("MouseController");
 export const keyboardProviderToken = new Token<KeyboardProvider>("KeyboardProvider");
 export const keyboardControllerToken = new Token<KeyboardController>(
   "KeyboardController",
+);
+export const clipboardProviderToken = new Token<ClipboardProvider>("ClipboardProvider");
+export const clipboardControllerToken = new Token<ClipboardController>(
+  "ClipboardController",
 );
 
 /** Real OS display layout — exposed so tests can override the token. */
@@ -92,6 +99,17 @@ export function createInputContainer(
       (c: ContainerType) =>
         new KeyboardController({ provider: c.resolve(keyboardProviderToken) }),
       "singleton",
+    )
+    .register(
+      clipboardProviderToken,
+      () => createClipboardProvider().provider,
+      "singleton",
+    )
+    .register(
+      clipboardControllerToken,
+      (c: ContainerType) =>
+        new ClipboardController({ provider: c.resolve(clipboardProviderToken) }),
+      "singleton",
     );
   return container;
 }
@@ -111,5 +129,6 @@ export function createInputService(
     sessionLookup,
     undefined,
     container.resolve(keyboardControllerToken),
+    container.resolve(clipboardControllerToken),
   );
 }
