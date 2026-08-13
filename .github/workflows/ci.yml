@@ -55,4 +55,4 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build ${{ matrix.app }}
-        run: pnpm --filter @kbm-remote/${{ matrix.app }} run build
+        run: pnpm --filter @kbm-remote/${{ matrix.app }}... run build
