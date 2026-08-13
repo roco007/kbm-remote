@@ -117,7 +117,16 @@ export class InputError extends Error {
       | "dragNotStarted"
       | "dragAlreadyStarted"
       | "providerUnavailable"
-      | "unsupportedPlatform",
+      | "unsupportedPlatform"
+      | "invalidKey"
+      | "invalidKeys"
+      | "keyAlreadyHeld"
+      | "invalidText"
+      | "textTooLarge"
+      | "emptyText"
+      | "invalidMediaKey"
+      | "unsupportedKey"
+      | "bindingsUnavailable",
   ) {
     super(message);
   }

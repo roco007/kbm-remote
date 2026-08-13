@@ -17,10 +17,13 @@
  */
 import {
   Container,
+  KeyboardController,
   MouseController,
   Token,
+  createKeyboardProvider,
   createMouseProvider,
   type Container as ContainerType,
+  type KeyboardProvider,
   type MonitorApi,
   type MouseProvider,
 } from "@kbm-remote/input-provider";
@@ -30,6 +33,10 @@ import { InputService } from "./inputService";
 export const monitorToken = new Token<MonitorApi>("MonitorApi");
 export const providerToken = new Token<MouseProvider>("MouseProvider");
 export const controllerToken = new Token<MouseController>("MouseController");
+export const keyboardProviderToken = new Token<KeyboardProvider>("KeyboardProvider");
+export const keyboardControllerToken = new Token<KeyboardController>(
+  "KeyboardController",
+);
 
 /** Real OS display layout — exposed so tests can override the token. */
 export class ElectronMonitors implements MonitorApi {
@@ -70,6 +77,7 @@ export function createInputContainer(
   container
     .register(monitorToken, () => new ElectronMonitors(), "singleton")
     .register(providerToken, () => createMouseProvider().provider, "singleton")
+    .register(keyboardProviderToken, () => createKeyboardProvider().provider, "singleton")
     .register(
       controllerToken,
       (c: ContainerType) =>
@@ -77,6 +85,12 @@ export function createInputContainer(
           provider: c.resolve(providerToken),
           monitors: c.resolve(monitorToken),
         }),
+      "singleton",
+    )
+    .register(
+      keyboardControllerToken,
+      (c: ContainerType) =>
+        new KeyboardController({ provider: c.resolve(keyboardProviderToken) }),
       "singleton",
     );
   return container;
@@ -92,5 +106,10 @@ export function createInputService(
     sessionId: string,
   ) => import("@kbm-remote/network").GatewaySession | undefined,
 ): InputService {
-  return new InputService(container.resolve(controllerToken), sessionLookup);
+  return new InputService(
+    container.resolve(controllerToken),
+    sessionLookup,
+    undefined,
+    container.resolve(keyboardControllerToken),
+  );
 }

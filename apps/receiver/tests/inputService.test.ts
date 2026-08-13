@@ -10,6 +10,8 @@
  */
 import {
   FixedMonitors,
+  KeyboardController,
+  MockKeyboardProvider,
   MockMouseProvider,
   makeTestDisplays,
   type MouseController,
@@ -19,9 +21,10 @@ import { FrameType } from "@kbm-remote/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  createInputContainer,
   controllerToken,
   createInputContainer as _reexportCheck,
+  createInputContainer,
+  keyboardControllerToken,
   monitorToken,
   providerToken,
 } from "../src/main/inputModule";
@@ -87,6 +90,8 @@ function captureCtx(): { ctx: FrameContext & { __closed: number | null } } {
 
 describe("InputService", () => {
   let provider: MockMouseProvider;
+  let keyboard: KeyboardController;
+  let kbProvider: MockKeyboardProvider;
   let service: InputService;
   let router: FrameRouter;
   let dispatch: (
@@ -98,12 +103,18 @@ describe("InputService", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     provider = new MockMouseProvider();
+    kbProvider = new MockKeyboardProvider();
+    keyboard = new KeyboardController({
+      provider: kbProvider,
+      sleep: async () => {},
+    });
     const container = createInputContainer();
     container.register(providerToken, () => provider);
     container.register(
       monitorToken,
       () => new FixedMonitors(makeTestDisplays({ secondary: true })),
     );
+    container.register(keyboardControllerToken, () => keyboard);
 
     let currentSession: GatewaySession | undefined;
     service = new InputService(
@@ -214,7 +225,7 @@ describe("InputService", () => {
     expect(provider.calls).toHaveLength(0);
   });
 
-  it("registers all six mouse frame types on the router", () => {
+  it("registers all twelve mouse and keyboard frame types on the router", () => {
     const types = [
       FrameType.MouseMove,
       FrameType.MouseClick,
@@ -222,10 +233,165 @@ describe("InputService", () => {
       FrameType.MouseDragStart,
       FrameType.MouseDragMove,
       FrameType.MouseDragEnd,
+      FrameType.KeyPress,
+      FrameType.KeyHold,
+      FrameType.KeyRelease,
+      FrameType.TextInput,
+      FrameType.Shortcut,
+      FrameType.MediaKey,
     ];
     for (const t of types) {
       expect(router["handlers"].has(t)).toBe(true);
     }
+  });
+});
+
+// ── keyboard integration ───────────────────────────────────────────────
+
+describe("InputService — keyboard subsystem", () => {
+  let keyboard: KeyboardController;
+  let kbProvider: MockKeyboardProvider;
+  let service: InputService;
+  let router: FrameRouter;
+  let dispatch: (
+    session: GatewaySession,
+    f: { t: number; mid: number; v: number; ts: number; p: Record<string, unknown> },
+    overrideCtx?: FrameContext & { __closed: number | null },
+  ) => Promise<{ ctx: FrameContext; sent: unknown[] }>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    kbProvider = new MockKeyboardProvider();
+    keyboard = new KeyboardController({ provider: kbProvider, sleep: async () => {} });
+    const container = createInputContainer();
+    container.register(keyboardControllerToken, () => keyboard);
+    container.register(providerToken, () => new MockMouseProvider());
+    container.register(monitorToken, () => new FixedMonitors(makeTestDisplays()));
+
+    let currentSession: GatewaySession | undefined;
+    service = new InputService(
+      container.resolve(controllerToken) as MouseController,
+      (sessionId) =>
+        currentSession?.sessionId === sessionId ? currentSession : undefined,
+      undefined,
+      keyboard,
+    );
+    router = makeRouter();
+    service.registerHandlers(router);
+
+    dispatch = async (session, f, overrideCtx) => {
+      currentSession = session;
+      const { ctx, sent } = makeCtx(session);
+      const active = overrideCtx ?? ctx;
+      const handler = router["handlers"].get(f.t);
+      if (handler) await handler(f as never, active);
+      return Promise.resolve({ ctx: active, sent });
+    };
+  });
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+  });
+
+  it("closes with 4005 when keyboard frames arrive without authentication", async () => {
+    const session = makeSession({ authenticated: false });
+    const { ctx } = captureCtx();
+    await dispatch(session, env(FrameType.KeyPress, { keys: ["F1"] }), ctx);
+    expect(ctx.__closed).toBe(4005);
+  });
+
+  it("rejects authenticated sockets lacking the keyboard permission", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["mouse"] });
+    const { ctx } = captureCtx();
+    await dispatch(
+      session,
+      env(FrameType.KeyPress, { keys: ["ControlLeft", "KeyC"] }),
+      ctx,
+    );
+    expect(ctx.__closed).toBe(4005);
+  });
+
+  it("gates media keys behind the media permission separately from keyboard", async () => {
+    const kbOnly = makeSession({ authenticated: true, permissions: ["keyboard"] });
+    const { ctx: ctxKb } = captureCtx();
+    await dispatch(kbOnly, env(FrameType.MediaKey, { key: "volumeUp" }), ctxKb);
+    expect(ctxKb.__closed).toBe(4005);
+
+    const media = makeSession({ authenticated: true, permissions: ["media"] });
+    await dispatch(media, env(FrameType.MediaKey, { key: "playPause" }));
+    expect(kbProvider.calls).toEqual([
+      { method: "mediaKey", input: { key: "playPause" } },
+    ]);
+  });
+
+  it("delegates a KeyPress combo and reorders modifiers first", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["keyboard"] });
+    await dispatch(session, env(FrameType.KeyPress, { keys: ["KeyV", "ControlLeft"] }));
+    expect(kbProvider.calls).toEqual([
+      { method: "press", input: { keys: ["ControlLeft", "KeyV"] } },
+    ]);
+  });
+
+  it("runs the hold → release round trip, repeating past the start delay", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["keyboard"] });
+    await dispatch(
+      session,
+      env(FrameType.KeyHold, {
+        key: "ArrowDown",
+        repeatStartMs: 100,
+        repeatIntervalMs: 50,
+      }),
+    );
+    vi.advanceTimersByTime(140);
+    await vi.advanceTimersByTimeAsync(0);
+    const presses = kbProvider.calls.filter((c) => c.method === "press").length;
+    expect(presses).toBeGreaterThanOrEqual(2);
+
+    await dispatch(session, env(FrameType.KeyRelease, { key: "ArrowDown" }));
+    expect(kbProvider.calls.map((c) => c.method)).toContain("release");
+    expect(keyboard.activeRepeatCount).toBe(0);
+  });
+
+  it("delegates text input with unicode and rejects oversized payloads", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["keyboard"] });
+    await dispatch(session, env(FrameType.TextInput, { text: "Héllo 世界" }));
+    await dispatch(session, env(FrameType.TextInput, { text: "x".repeat(4100) }));
+    await dispatch(session, env(FrameType.TextInput, { text: "" }));
+    expect(kbProvider.calls).toEqual([
+      { method: "typeText", input: { text: "Héllo 世界" } },
+    ]);
+  });
+
+  it("delegates a shortcut with the hold window honoured", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["keyboard"] });
+    await dispatch(
+      session,
+      env(FrameType.Shortcut, { keys: ["AltLeft", "F4"], holdMs: 20 }),
+    );
+    vi.advanceTimersByTime(30);
+    const methods = kbProvider.calls.map((c) => c.method);
+    expect(methods).toEqual(["press", "release", "release"]);
+  });
+
+  it("delegates abstract media keys and rejects invalid ones", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["media"] });
+    await dispatch(session, env(FrameType.MediaKey, { key: "nextTrack" }));
+    await dispatch(session, env(FrameType.MediaKey, { key: "volumeMax" }));
+    expect(kbProvider.calls).toEqual([
+      { method: "mediaKey", input: { key: "nextTrack" } },
+    ]);
+  });
+
+  it("rejects keyboard frames with invalid payloads (no OS side effects)", async () => {
+    const session = makeSession({ authenticated: true, permissions: ["keyboard"] });
+    await dispatch(session, env(FrameType.KeyPress, { keys: [] }));
+    await dispatch(session, env(FrameType.KeyPress, { keys: ["Cmd"] }));
+    await dispatch(session, env(FrameType.KeyHold, { key: 42 }));
+    await dispatch(session, env(FrameType.KeyRelease, { key: "Cmd" }));
+    await dispatch(session, env(FrameType.TextInput, { text: 123 as unknown }));
+    await dispatch(session, env(FrameType.Shortcut, { keys: [] }));
+    expect(kbProvider.calls).toHaveLength(0);
   });
 });
 
