@@ -50,6 +50,13 @@ export interface ClientOptions {
   capabilities?: string[];
   /** Stored sessionId + token for token-based re-authentication (§5.4). */
   resume?: { sessionId: string; sessionToken: string };
+  /**
+   * Security-audit §3.1 — certificate pinning. For platforms whose socket
+   * stack exposes the peer certificate (Node `tlsSocket.authorized` flow),
+   * the host app resolves the PEM and passes it here; a null/false return
+   * aborts the connection with a user-visible impersonation warning.
+   */
+  checkServerCertificate?: (peerCertificatePem: string) => boolean;
   /** Override clocks/timers in tests. */
   clock?: () => number;
   timerFactory?: {
@@ -84,6 +91,8 @@ export interface ClientEvents {
   helloAck?: (payload: Record<string, unknown>) => void;
   authOk?: (payload: Record<string, unknown>) => void;
   authFailed?: (payload: Record<string, unknown>) => void;
+  /** Security-audit §3.1 — fired when the peer certificate fails the pin. */
+  certPinFailed?: (peerCertificatePem: string) => void;
   message?: (frame: FrameEnvelope) => void;
   reconnecting?: (attempt: number) => void;
   /** RTT/jitter/quality updated — feed the UX latency chip. */
@@ -95,6 +104,10 @@ const READY_OPEN = 1;
 export class ClientConnection {
   private socket: ClientSocket | null = null;
   private state: ClientState = "idle";
+  /** Security-audit §3.1 — peer certificate PEM for pinning (set by host). */
+  peerCertificate: string | null = null;
+  /** One-time auth challenge from HelloAck, echoed in Authenticate (§3.4). */
+  private authChallenge: string | null = null;
   private midCounter = 1;
   private pingSeq = 0;
   private missedPongs = 0;
@@ -184,6 +197,57 @@ export class ClientConnection {
     this.setState("disconnected");
   }
 
+  // ── Authenticate (§5.2) + challenge echo (§3.4) ─────────────────────
+
+  /**
+   * Run the certificate pin check provided by the host app. The peer PEM is
+   * not available from the plain WebSocket contract — the host's socket
+   * factory stores the last-seen certificate on `this.peerCertificate` while
+   * constructing the socket. On first connection the QR-code pin wins;
+   * afterwards the previously-stored pin is reused (TOFU, §3.1).
+   */
+  private async runCertPinCheck(): Promise<void> {
+    const peerPem = this.peerCertificate;
+    if (!peerPem || !this.options.checkServerCertificate) {
+      this.log.info("socket open (no cert available for pinning)");
+      this.reconnectAttempts = 0;
+      void this.sendHello();
+      return;
+    }
+    if (!this.options.checkServerCertificate(peerPem)) {
+      this.log.error("peer certificate fails pin check — impersonation suspected");
+      this.events.certPinFailed?.(peerPem);
+      this.setState("disconnected");
+      this.socket?.close(CLOSE_CODES.NotAuthenticated, "certPinMismatch");
+      return;
+    }
+    this.log.info("socket open, peer certificate pinned");
+    this.reconnectAttempts = 0;
+    void this.sendHello();
+  }
+
+  /**
+   * Transmit the Authenticate frame with the one-time challenge echo.
+   * The challenge is consumed on this call — a second Authenticate on the
+   * same session can never replay it.
+   */
+  private sendAuthenticate(credentials: {
+    sessionId: string;
+    sessionToken: string;
+  }): void {
+    const challenge = this.authChallenge;
+    this.authChallenge = null;
+    this.send({
+      t: FrameType.Authenticate,
+      ts: this.clock(),
+      p: {
+        sessionId: credentials.sessionId,
+        sessionToken: credentials.sessionToken,
+        challenge: challenge ?? "",
+      },
+    });
+  }
+
   // ── Sending ──────────────────────────────────────────────────────────
 
   /**
@@ -236,6 +300,14 @@ export class ClientConnection {
     socket.binaryType = "arraybuffer";
 
     socket.onopen = () => {
+      // Security-audit §3.1 — pin gate: the socket factory resolved the TLS
+      // socket for us; if a cert check is registered, run it BEFORE any
+      // protocol frames flow. A pin mismatch closes the socket with a
+      // user-visible impersonation warning and aborts the handshake.
+      if (this.options.checkServerCertificate) {
+        void this.runCertPinCheck();
+        return;
+      }
       this.log.info("socket open");
       this.reconnectAttempts = 0;
       void this.sendHello();
@@ -283,9 +355,14 @@ export class ClientConnection {
     this.timers.setTimeout(() => {
       if (this.state === "connecting") {
         this.log.warn("auth window elapsed without HelloAck — reconnecting");
-        this.scheduleReconnect();
+        void this.sendHello();
       }
     }, 30000);
+  }
+
+  /** Security-audit §3.1 — store the peer PEM so the pin gate can use it. */
+  setPeerCertificate(pem: string): void {
+    this.peerCertificate = pem;
   }
 
   private async handleMessage(raw: ArrayBuffer): Promise<void> {
@@ -300,15 +377,25 @@ export class ClientConnection {
     }
 
     switch (frame.t) {
-      case FrameType.HelloAck:
+      case FrameType.HelloAck: {
         this.sessionId = frame.p.sessionId as string;
+        // Security-audit §3.4 — capture the one-time challenge and send
+        // Authenticate with the echo immediately; the nonce may only ever
+        // be used once, so it is cleared after the reply.
+        const challenge = frame.p.challenge as string | undefined;
+        if (typeof challenge === "string") this.authChallenge = challenge;
         this.setState("connected");
         this.events.helloAck?.(frame.p);
         this.startPingLoop();
         if (frame.p.authRequired === false) {
           this.setState("authenticated");
         }
+        // Authenticate (§5.2): stored token + mandatory challenge echo.
+        if (this.options.resume) {
+          this.sendAuthenticate(this.options.resume);
+        }
         break;
+      }
 
       case FrameType.AuthOk:
         this.setState("authenticated");

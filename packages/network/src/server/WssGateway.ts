@@ -16,12 +16,19 @@
  * WebSocketGateway wires this class as the message handler.
  */
 
+import { randomBytes } from "node:crypto";
+
 import { FrameType, type FrameEnvelope } from "@kbm-remote/protocol";
 
 import {
   ACCEPTED_SUBPROTOCOLS,
+  AUTH_TIMEOUT_MS,
   CLOSE_CODES,
+  IP_AUTH_BAN_MS,
+  IP_AUTH_BAN_THRESHOLD,
+  IP_AUTH_FAILURE_WINDOW_MS,
   DISCONNECT_ECHO_WAIT_MS,
+  MAX_CONNECTIONS_PER_IP,
   MAX_MISSED_PONGS,
   SILENCE_WATCHDOG_MS,
   SUBPROTOCOL,
@@ -50,6 +57,10 @@ export interface GatewaySession extends AuthDecision {
   missedPongs: number;
   connectedAt: number;
   lastPongTs: number;
+  /** One-time auth challenge echoed inside Authenticate (§3.4). */
+  challenge: string;
+  /** Per-session replay guard: reliable frame mids seen this connection. */
+  seenMids: Set<number>;
 }
 
 export type GatewayState = "starting" | "listening" | "draining" | "stopped";
@@ -62,6 +73,14 @@ export class WssGateway {
   private server: TLSServer | null = null;
   private readonly sessions = new Map<WebSocket, GatewaySession>();
   private state: GatewayState = "starting";
+
+  // ── Per-IP flood protection (security audit §3.3) ────────────────────
+  /** Live connection count per remote address. */
+  private readonly connectionsPerIp = new Map<string, number>();
+  /** Auth-failure ban windows: ip -> expiry epoch ms. */
+  private readonly ipAuthBans = new Map<string, number>();
+  /** Auth failure sliding window: ip -> list of failure epoch ms. */
+  private readonly ipAuthFailures = new Map<string, number[]>();
 
   constructor(private readonly options: WssGatewayOptions) {
     this.maxFrameBytes = options.maxFrameBytes ?? DEFAULT_MAX_FRAME_BYTES;
@@ -190,6 +209,27 @@ export class WssGateway {
   }
 
   private onConnection(ws: WebSocket): void {
+    const remoteAddr = this.remoteAddressOf(ws);
+
+    // Per-IP flood protection (security audit §3.3): refuse new sockets from
+    // an address that already holds the maximum connection slot, or whose
+    // brute-force auth attempts triggered a ban.
+    const banned = this.ipAuthBans.get(remoteAddr) ?? 0;
+    if (Date.now() < banned) {
+      this.log.warn("banned IP — refusing connection", { remote: remoteAddr });
+      ws.close(4001, "auth banned");
+      return;
+    }
+    if ((this.connectionsPerIp.get(remoteAddr) ?? 0) >= MAX_CONNECTIONS_PER_IP) {
+      this.log.warn("connection flood — refusing IP", { remote: remoteAddr });
+      ws.close(4001, "too many connections");
+      return;
+    }
+    this.connectionsPerIp.set(
+      remoteAddr,
+      (this.connectionsPerIp.get(remoteAddr) ?? 0) + 1,
+    );
+
     ws.binaryType = "arraybuffer";
     const session: GatewaySession = {
       ws,
@@ -202,20 +242,26 @@ export class WssGateway {
       authenticated: false,
       permissions: [],
       sessionId: `transient-${Math.random().toString(16).slice(2, 10)}`,
+      // One-time auth challenge (§3.4): a fresh random nonce that the client
+      // MUST echo inside Authenticate. Defeats replay of captured
+      // Authenticate frames and pre-connection MITM injection.
+      challenge: randomBytes(16).toString("hex"),
+      seenMids: new Set<number>(),
     };
     this.sessions.set(ws, session);
 
     ws.on("message", (data) => this.onMessage(ws, session, data));
-    ws.on("close", (code, reason) => this.onClose(ws, session, code, reason.toString()));
+    ws.on("close", (code, reason) => {
+      this.onClose(ws, session, code, reason.toString());
+      this.decrementIpCount(remoteAddr);
+    });
     ws.on("error", (error) => {
       this.log.error("socket error", { error: error.message });
       this.removeSession(ws);
+      this.decrementIpCount(remoteAddr);
     });
 
     this.startWatchdog(ws, session);
-    const remoteAddr =
-      (ws as WebSocket & { _socket?: import("node:net").Socket })._socket
-        ?.remoteAddress ?? "unknown";
     this.log.info("connection opened", { remote: remoteAddr });
   }
 
@@ -250,8 +296,23 @@ export class WssGateway {
       return;
     }
 
+    // Duplicate reliable frame (mid > 0) replay guard (§5.2): each seen mid is
+    // remembered for the lifetime of the connection; a replay is Nacked and
+    // the handler is NOT re-invoked.
+    if (frame.mid > 0) {
+      if (session.seenMids.has(frame.mid)) {
+        this.sendNack(ws, frame, "replay");
+        return;
+      }
+      session.seenMids.add(frame.mid);
+    }
+
     if (frame.t === FrameType.Ping) {
-      session.metrics.pingReceived();
+      // Pre-auth Pings are answered (the receiver's latency probe), but they
+      // MUST NOT touch the watchdog or pong accounting — otherwise a
+      // connection flood could keep unauthenticated sockets alive forever
+      // (security audit finding §3.2).
+      if (session.authenticated) session.metrics.pingReceived();
       const pong: FrameEnvelope = {
         t: FrameType.Pong,
         mid: 0,
@@ -268,10 +329,16 @@ export class WssGateway {
     const ctx: FrameContext = {
       sessionId: session.sessionId,
       authenticated: session.authenticated,
+      challenge: session.challenge,
       send: (f) => this.sendTo(ws, f),
       close: (code, reason) => this.close(ws, code, reason),
       setSessionId: (id) => {
         session.sessionId = id;
+      },
+      consumeChallenge: () => {
+        const used = session.challenge;
+        session.challenge = "";
+        return used;
       },
     };
 
@@ -315,6 +382,21 @@ export class WssGateway {
 
   private startWatchdog(ws: WebSocket, session: GatewaySession): void {
     const timer = setInterval(() => {
+      // Pre-auth deadline: unauthenticated connections must complete Hello +
+      // Authenticate within AUTH_TIMEOUT_MS, or the socket is dropped.
+      // Without this, cheap anonymous connections could be parked forever.
+      if (!session.authenticated) {
+        const pending = Date.now() - session.connectedAt;
+        if (pending > AUTH_TIMEOUT_MS) {
+          this.log.warn("auth timeout — closing unauthenticated connection", {
+            sessionId: session.sessionId,
+            pendingMs: pending,
+          });
+          this.close(ws, CLOSE_CODES.NotAuthenticated, "auth timeout");
+          return;
+        }
+        return; // watchdog for authenticated sessions only until paired
+      }
       const idle = Date.now() - session.metrics.lastActivityAt;
       if (idle > SILENCE_WATCHDOG_MS) {
         this.log.warn("silence watchdog — closing dead connection", {
@@ -367,6 +449,59 @@ export class WssGateway {
 
   sessionFor(ws: WebSocket): GatewaySession | undefined {
     return this.sessions.get(ws);
+  }
+
+  /** Lookup a session by its transient (pre-Hello) or stable id. */
+  sessionByTransientId(sessionId: string): GatewaySession | undefined {
+    for (const session of this.sessions.values()) {
+      if (session.sessionId === sessionId) return session;
+    }
+    return undefined;
+  }
+
+  /** Extract the remote address from the underlying socket. */
+  private remoteAddressOf(ws: WebSocket): string {
+    return (
+      (ws as WebSocket & { _socket?: import("node:net").Socket })._socket
+        ?.remoteAddress ?? "unknown"
+    );
+  }
+
+  private decrementIpCount(ip: string): void {
+    const current = this.connectionsPerIp.get(ip) ?? 0;
+    if (current <= 1) {
+      this.connectionsPerIp.delete(ip);
+    } else {
+      this.connectionsPerIp.set(ip, current - 1);
+    }
+  }
+
+  /** Resolve an IP from a session id — used by the app layer to report auth failures for a connection. */
+  recordAuthFailureFor(sessionId: string): number | null {
+    const session = this.sessionByTransientId(sessionId);
+    if (!session) return null;
+    return this.recordAuthFailure(this.remoteAddressOf(session.ws));
+  }
+
+  /** Auth failure by raw address (testing / direct use). */
+  recordAuthFailure(ip: string): number | null {
+    // Record an auth failure for an IP. After `IP_AUTH_BAN_THRESHOLD` failures
+    // inside `IP_AUTH_FAILURE_WINDOW_MS`, the address is banned for
+    // `IP_AUTH_BAN_MS` (brute-force protection, §3.3). Returns the expiry of
+    // the ban if one was triggered, else null.
+    const now = Date.now();
+    const windowStart = now - IP_AUTH_FAILURE_WINDOW_MS;
+    const failures = (this.ipAuthFailures.get(ip) ?? []).filter((t) => t > windowStart);
+    failures.push(now);
+    this.ipAuthFailures.set(ip, failures);
+    if (failures.length >= IP_AUTH_BAN_THRESHOLD) {
+      const expiry = now + IP_AUTH_BAN_MS;
+      this.ipAuthBans.set(ip, expiry);
+      this.connectionsPerIp.delete(ip); // eject live flood sockets
+      this.log.warn("IP banned for auth brute force", { remote: ip, expiry });
+      return expiry;
+    }
+    return null;
   }
 
   /**

@@ -6,7 +6,7 @@
  * they need real input devices and are covered by the receiver integration
  * tests that inject the same mock surface into the full DI graph.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   KeyboardController,
@@ -280,5 +280,65 @@ describe("native backend code maps", () => {
 
   it("builds per-platform native providers without throwing", () => {
     expect(() => new NativeKeyboardProvider()).not.toThrow();
+  });
+});
+
+// ── Win32 injection defence (§3.9) ────────────────────────────────────
+
+/**
+ * Security-audit §3.9 — the Win32 `typeText` path hands text to PowerShell
+ * as `Set-Clipboard -Value '<escaped>'`. Single quotes must escape as `''`
+ * (PS single-quoted strings perform no expansion), so hostile payloads must
+ * never break out of the quoted value. These tests capture the exact command
+ * the backend would execute and assert quote balance plus escaping shape.
+ */
+describe("Win32KeyBackend — quote-escaping injection defence", () => {
+  let mockExec: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    // The Win32 backend's exec helper is injectable (§3.9), so the exact
+    // PowerShell command string can be captured without module mocking.
+    mockExec = vi.fn(async () => ({ stdout: "", stderr: "" }));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("doubles single quotes so hostile payloads stay inside the value", async () => {
+    const { Win32KeyBackend } = await import("../src/providers/keyboardNative.js");
+    const backend = new Win32KeyBackend(mockExec);
+    const hostile = "it''s fine; Start-Process calc; $(Get-ChildItem)`";
+    await backend.typeText(hostile);
+    expect(mockExec).toHaveBeenCalledTimes(1);
+    const command = String(mockExec.mock.calls[0]?.[1]?.[2] ?? "");
+    expect(command.startsWith(`Set-Clipboard -Value '`)).toBe(true);
+    // Original quotes are doubled inside the value; doubled quotes keep the
+    // string balanced (an even count of embedded single quotes).
+    const embedded = command.slice(
+      `Set-Clipboard -Value '`.length,
+      command.indexOf("'; Start-Sleep"),
+    );
+    const count = (embedded.match(/'/g) ?? []).length;
+    expect(count % 2).toBe(0);
+    expect(embedded).toContain("it''''s fine");
+  });
+
+  it("keeps PS meta-characters inert inside the single-quoted value", async () => {
+    const { Win32KeyBackend } = await import("../src/providers/keyboardNative.js");
+    const backend = new Win32KeyBackend(mockExec);
+    const meta = "$env:USERNAME; $(whoami)";
+    await backend.typeText(meta);
+    const command = String(mockExec.mock.calls[0]?.[1]?.[2] ?? "");
+    // Everything between the value quotes is passed literally to the clipboard.
+    expect(command).toContain(meta);
+    expect(command).toMatch(/^Set-Clipboard -Value '.+';/);
+  });
+
+  it("validates VK codes numerically so key scripts cannot inject", async () => {
+    const { Win32KeyBackend } = await import("../src/providers/keyboardNative.js");
+    const backend = new Win32KeyBackend(mockExec);
+    await expect(backend.pressKey("; Start-Process calc")).rejects.toThrow();
+    expect(mockExec).not.toHaveBeenCalled();
   });
 });

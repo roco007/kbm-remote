@@ -16,6 +16,14 @@ import type { FrameEnvelope } from "../types";
 /** Raw-byte threshold above which a frame payload is compressed. */
 export const COMPRESSION_THRESHOLD_BYTES = 256;
 
+/**
+ * Hard cap on the DECOMRESSED payload size (zip-bomb mitigation, security
+ * audit §4.5). A malicious 16 MB frame (maxFrameBytes) containing a highly
+ * compressible stream could otherwise inflate to many GB of RAM before any
+ * size check. Inflation aborts with an error once this cap is exceeded.
+ */
+export const MAX_DECOMPRESSED_BYTES = 4 * 1024 * 1024;
+
 /** Protocol major version carried in every envelope. */
 export const PROTOCOL_MAJOR_VERSION = 1;
 
@@ -40,6 +48,54 @@ export class CodecError extends Error {
 export interface Compressor {
   deflate(raw: Uint8Array): Uint8Array;
   inflate(compressed: Uint8Array): Uint8Array;
+}
+
+/**
+ * Streaming inflate with a hard byte cap — the zip-bomb guard. Throws a
+ * `CodecError` as soon as the decoded stream crosses `maxBytes`, so a
+ * malicious 16 MB compressed frame can never inflate beyond the cap.
+ *
+ * The async signature matches the codec's existing decodeFrame contract;
+ * the zlib transform drains in the background and resolves with the
+ * capped buffer (never larger than `maxBytes`).
+ */
+export async function inflateCapped(
+  compressed: Uint8Array,
+  maxBytes: number = MAX_DECOMPRESSED_BYTES,
+): Promise<Uint8Array> {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const zlib: typeof import("node:zlib") = require("node:zlib");
+  const chunks: Buffer[] = [];
+  let total = 0;
+  const stream = zlib.createInflateRaw();
+  let failError: Error | undefined;
+
+  stream.on("data", (chunk: Buffer) => {
+    total += chunk.length;
+    if (total > maxBytes) {
+      failError = new CodecError(
+        `decompressed payload exceeds ${maxBytes} bytes (zip-bomb guard)`,
+      );
+      stream.destroy();
+    } else {
+      chunks.push(chunk);
+    }
+  });
+  stream.on("error", () => {
+    if (!failError) {
+      failError = new CodecError("compressed payload failed to decompress");
+    }
+  });
+
+  const done = new Promise<void>((resolve) => {
+    stream.on("end", () => resolve());
+    stream.on("close", () => resolve());
+    stream.on("error", () => resolve());
+  });
+  stream.end(Buffer.from(compressed));
+  await done;
+  if (failError) throw failError;
+  return new Uint8Array(Buffer.concat(chunks));
 }
 
 export let compressor: Compressor = createNodeCompressor();
@@ -131,11 +187,12 @@ export async function decodeFrame(buffer: Uint8Array): Promise<DecodeResult> {
       throw new CodecError("compressed frame missing payload bytes");
     }
     try {
-      payload = decode(compressor.inflate(new Uint8Array(packed))) as Record<
+      payload = decode(await inflateCapped(new Uint8Array(packed))) as Record<
         string,
         unknown
       >;
-    } catch {
+    } catch (err) {
+      if (err instanceof CodecError) throw err;
       throw new CodecError("compressed payload failed to decompress");
     }
   }

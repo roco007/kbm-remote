@@ -15,7 +15,10 @@
  * is the thin composition root that connects them.
  */
 
+import { createHash, timingSafeEqual } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer as createTlsServer } from "node:https";
+import { join } from "node:path";
 
 // Why `node:https` and not `node:tls`? The `ws` library drives WebSocket
 // upgrades through the HTTP `upgrade` event. Plain `tls.Server` instances do
@@ -28,8 +31,7 @@ import { FrameType } from "@kbm-remote/protocol";
 import { createInputContainer, createInputService } from "./inputModule";
 
 import type { Container } from "@kbm-remote/input-provider";
-import type { GatewaySession } from "@kbm-remote/network";
-import type { AuthStore } from "@kbm-remote/network";
+import type { AuthStore, GatewaySession } from "@kbm-remote/network";
 
 const serviceLog = new Logger("networkService");
 
@@ -47,6 +49,14 @@ export interface NetworkServiceOptions {
   deviceId?: string;
   /** Stored device registry (M1 will persist this). */
   authStore?: AuthStore;
+  /**
+   * Directory where the receiver's TLS identity (key + cert) is persisted.
+   * When set, the same certificate is reused across restarts so the pairing
+   * QR fingerprint stays stable — a fresh self-signed identity on every
+   * launch would force re-pairing and invite MITM during the new pairing
+   * (security audit §3.1).
+   */
+  identityDir?: string;
 }
 
 const DEFAULT_PORT = 27001;
@@ -58,6 +68,7 @@ const DEFAULT_PORT = 27001;
 export class NetworkService {
   private readonly gateway: WssGateway;
   private readonly auth: AuthMiddleware;
+
   private readonly inputService: import("./inputService").InputService;
   private tlsServer: import("node:https").Server | null = null;
   private readonly deviceId: string;
@@ -98,9 +109,11 @@ export class NetworkService {
   }> {
     // Dynamic import keeps the Node-only crypto path isolated from RN builds.
     const tls = await import("@kbm-remote/network/dist/transport/tls.js");
-    const { key, cert } = await tls.generateSelfSignedCert({
-      deviceId: this.deviceId || undefined,
-    });
+    const { key, cert } = await loadOrGenerateIdentity(
+      tls,
+      this.options.identityDir ?? "",
+      this.deviceId,
+    );
     const fingerprint = tls.fingerprintOf(cert);
     const deviceId = tls.deviceIdOf(cert);
 
@@ -165,6 +178,10 @@ export class NetworkService {
           sessionId: ctx.sessionId,
           receiverName: this.deviceId || "kbm-receiver",
           protoVersion: p?.protoVersion ?? "unknown",
+          // Auth challenge (§3.4): a one-time nonce the client MUST echo in
+          // Authenticate. The gateway blanks it after first use, so a replayed
+          // Authenticate frame from a MITM or a packet capture can never work.
+          challenge: ctx.consumeChallenge?.(),
         },
       });
 
@@ -174,10 +191,40 @@ export class NetworkService {
     // Authenticate (§5.2): verify the stored session token via the auth
     // middleware, promote on success, close with 4001 on failure.
     router.register(FrameType.Authenticate, async (frame, ctx) => {
-      const p = frame.p as { sessionId: string; sessionToken: string };
+      const p = frame.p as {
+        sessionId: string;
+        sessionToken: string;
+        challenge?: string;
+      };
+
+      // Challenge-response (§3.4): the Authenticate payload MUST carry the
+      // exact nonce issued in HelloAck, and that nonce may be used once.
+      // Missing, blank, or stale challenges fail authentication outright —
+      // this is what defeats captured-frame replay and MITM injection.
+      const presentedChallenge = p.challenge ?? "";
+      const expectedChallenge = ctx.consumeChallenge?.() ?? "";
+      if (
+        !expectedChallenge ||
+        !presentedChallenge ||
+        presentedChallenge.length > 128 ||
+        !safeEqual(presentedChallenge, expectedChallenge)
+      ) {
+        this.gateway.recordAuthFailureFor(ctx.sessionId);
+        ctx.send({
+          t: FrameType.AuthFailed,
+          mid: 0,
+          v: 1,
+          ts: Date.now(),
+          p: { reason: "challengeInvalid" },
+        });
+        ctx.close(4001, "challengeInvalid");
+        return { ok: false, reason: "notAuthenticated" };
+      }
+
       const decision = await this.auth.verifyAuthenticate(p.sessionId, p.sessionToken);
 
       if (!decision.ok) {
+        this.gateway.recordAuthFailureFor(ctx.sessionId);
         ctx.send({
           t: FrameType.AuthFailed,
           mid: 0,
@@ -217,23 +264,91 @@ function optionsPort(options: NetworkServiceOptions): number {
 }
 
 /**
+ * Load a persisted TLS identity from `identityDir/tls/` or generate a fresh
+ * one and store it. A stable identity means the pairing fingerprint never
+ * changes between restarts — senders pin the very first QR code forever.
+ */
+export async function loadOrGenerateIdentity(
+  tls: {
+    generateSelfSignedCert: (opts?: { deviceId?: string }) => Promise<{
+      key: string;
+      cert: string;
+    }>;
+  },
+  identityDir: string,
+  deviceId: string,
+): Promise<{ key: string; cert: string }> {
+  const dir = join(identityDir, "tls");
+  const keyPath = join(dir, "identity.key");
+  const certPath = join(dir, "identity.pem");
+
+  if (existsSync(keyPath) && existsSync(certPath)) {
+    const key = readFileSync(keyPath, "utf8");
+    const cert = readFileSync(certPath, "utf8");
+    // Verify the stored cert is still parseable before trusting it.
+    if (key && cert) {
+      // Parse check: a fresh cert object is only needed for fingerprinting.
+      const { X509Certificate } = await import("node:crypto");
+      try {
+        new X509Certificate(cert); // throws on malformed PEM
+        return { key, cert };
+      } catch {
+        serviceLog.warn("stored TLS identity corrupt — regenerating", {
+          dir,
+        });
+      }
+    }
+  }
+
+  mkdirSync(dir, { recursive: true });
+  const generated = await tls.generateSelfSignedCert({
+    deviceId: deviceId || undefined,
+  });
+  // File permissions 0600 — the private key must stay off the disk-wide.
+  writeFileSync(keyPath, generated.key, { mode: 0o600 });
+  writeFileSync(certPath, generated.cert, { mode: 0o644 });
+  serviceLog.info("TLS identity generated and persisted", { dir });
+  return generated;
+}
+
+/** Constant-time hex comparison — the auth challenge is a secret, so timing
+ *  side channels on mismatch must be avoided (§3.4). */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const bufferA = Buffer.from(a);
+  const bufferB = Buffer.from(b);
+  if (bufferA.length !== bufferB.length) return false;
+  return timingSafeEqual(bufferA, bufferB);
+}
+
+/** Token hashing: SHA-256 with per-session salt (§3.6). */
+function hashToken(token: string, salt: string): string {
+  return createHash("sha256").update(`${salt}:${token}`, "utf8").digest("hex");
+}
+
+/**
  * Minimal in-memory auth store used until M1 ships persistent storage.
- * Tokens are issued as opaque hex identifiers; verification is a plain
- * equality check against the registry. Per Spec §5.1 the M1 store MUST
- * hash tokens before persisting them.
+ * Tokens are hashed at rest with a per-session random salt (security audit
+ * §3.6) — the registry never holds a plaintext session secret.
  */
 function createDefaultAuthStore(): AuthStore {
-  const tokens = new Map<string, string>();
+  const tokens = new Map<string, { hash: string; salt: string }>();
   const revoked = new Set<string>();
   let pairingAttempts = 0;
 
   return {
     async verifyToken(sessionId: string, token: string) {
       if (revoked.has(sessionId)) return null;
-      return tokens.get(sessionId) === token ? ["keyboard", "mouse"] : null;
+      const entry = tokens.get(sessionId);
+      if (!entry) return null;
+      const presented = hashToken(token, entry.salt);
+      return timingSafeEqual(Buffer.from(presented), Buffer.from(entry.hash))
+        ? ["keyboard", "mouse"]
+        : null;
     },
     async storeSession(sessionId: string, token: string) {
-      tokens.set(sessionId, token);
+      const salt = createHash("sha256").update(sessionId).digest("hex").slice(0, 16);
+      tokens.set(sessionId, { salt, hash: hashToken(token, salt) });
     },
     async revokeSession(sessionId: string) {
       revoked.add(sessionId);

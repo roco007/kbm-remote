@@ -38,6 +38,28 @@ export const MAX_IDLE_HEARTBEAT_INTERVAL_MS = 60_000;
 /** Silence before the watchdog treats the connection as dead. */
 export const SILENCE_WATCHDOG_MS = 15_000;
 
+/**
+ * Maximum time a new connection may remain unauthenticated before the
+ * gateway closes it (security audit §3.2). Prevents cheap anonymous sockets
+ * from being parked indefinitely with Ping keep-alives.
+ */
+export const AUTH_TIMEOUT_MS = 30_000;
+
+/**
+ * Per-IP concurrent connection cap (security audit §3.3). Beyond this, new
+ * connections from the same address are refused with a fatal close.
+ */
+export const MAX_CONNECTIONS_PER_IP = 32;
+
+/** Auth-failure ban window in milliseconds (security audit §3.3). */
+export const IP_AUTH_BAN_MS = 10 * 60 * 1000;
+
+/** Sliding window of auth failures before the IP is banned. */
+export const IP_AUTH_FAILURE_WINDOW_MS = 60_000;
+
+/** Consecutive auth failures inside the window before the IP is banned. */
+export const IP_AUTH_BAN_THRESHOLD = 10;
+
 /** Pong must arrive within this many missed-ping intervals before reconnect. */
 export const MAX_MISSED_PONGS = 3;
 
@@ -106,6 +128,8 @@ export const NACK_REASONS = [
   "permissionDenied",
   "payloadTooLarge",
   "unknownType",
+  "replay",
+  "tooManyConnections",
 ] as const;
 export type NackReason = (typeof NACK_REASONS)[number];
 

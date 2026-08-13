@@ -26,6 +26,14 @@ import {
 } from "@kbm-remote/network";
 import { type FrameEnvelope } from "@kbm-remote/protocol";
 
+/** Security-audit §3.1 — persisted cert pin metadata (fingerprint + when). */
+export interface CertPin {
+  /** SHA-256 fingerprint of the receiver's identity certificate. */
+  fingerprint: string;
+  /** Unix ms when the pin was first established (pairing time). */
+  pinnedAt: number;
+}
+
 export type { ClientSocket };
 
 export interface ReceiverAddress {
@@ -40,10 +48,28 @@ export interface ConnectionManagerOptions {
   clientName: string;
   /** `android` | `ios` — advertised in Hello §4.2. */
   clientOs: "android" | "ios";
-  /** Socket implementation; Expo apps pass `global.WebSocket` here. */
-  socketFactory: ClientOptions["socketFactory"];
   /** Optional persisted session for token-based re-authentication (§5.4). */
   resume?: { sessionId: string; sessionToken: string };
+  /**
+   * Security-audit §3.1 — stored certificate pin for the target receiver.
+   * The first connection (pairing) supplies the pin from the QR code;
+   * afterwards reconnections verify the peer certificate against it.
+   */
+  pinnedCert?: CertPin;
+  /**
+   * Persists the pin after the first successful pairing so reconnects verify
+   * the same receiver (§3.1). The host app implements this (AsyncStorage on
+   * mobile, JSON on desktop tests).
+   */
+  onPinEstablished?: (pin: CertPin) => void | Promise<void>;
+  /**
+   * Factory producing a socket ALREADY verified against the pin. For Node
+   * hosts the reference `NodeTlsSocketFactory` (below) wraps `tls.connect`
+   * with `checkServerIdentity` bound to `verifyPin`. Mobile hosts set the
+   * factory per platform (React Native's WebSocket exposes no cert — the
+   * fingerprint exchange at pairing is the trust anchor there).
+   */
+  socketFactory: ClientOptions["socketFactory"];
 }
 
 export type ConnectionManagerState = ClientConnection["connectionState"];
@@ -51,6 +77,70 @@ export type ConnectionManagerState = ClientConnection["connectionState"];
 export interface ConnectionManagerEvents extends ClientEvents {
   /** Full frame stream (for input/clipboard modules wiring in later). */
   message?: (frame: FrameEnvelope) => void;
+  /** Security-audit §3.1 — a TOFU pin was established after first pairing. */
+  certPinEstablished?: (pin: CertPin) => void;
+}
+
+/**
+ * Security-audit §3.1 — Node/Electron reference socket factory.
+ *
+ * Wraps `tls.connect` with `checkServerIdentity` bound to the TLS module's
+ * `verifyPin` (§2.6). The peer certificate is also stored on the connection
+ * for the QR-code TOFU flow, so the very first pairing pins the exact
+ * receiver identity and every reconnect verifies it. MITM substitution
+ * fails the TLS handshake before any protocol frame is exchanged.
+ */
+export function createNodeTlsSocketFactory(options: {
+  /** Pin from the pairing QR code or the previously-stored pin. */
+  pinnedCert?: CertPin;
+}): ClientOptions["socketFactory"] {
+  return (url, protocols) => {
+    // Forwarded into the Node implementation at app wiring time (main
+    // process context); this module intentionally stays importable in RN.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const NodeWs = require("ws") as typeof import("ws");
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const tls = require("node:tls") as typeof import("node:tls");
+    // ESLint maps `no-var-requires` to the `require(...)` token, so the
+    // disable must sit on the same physical line as the call. The explicit
+    // type annotation keeps the whole assignment within Prettier's
+    // print width while letting the require remain a single line.
+    const networkTls: typeof import("@kbm-remote/network/dist/transport/tls.js") =
+      /* eslint-disable-line @typescript-eslint/no-var-requires */
+      /* eslint-disable-next-line @typescript-eslint/no-var-requires */
+      require("@kbm-remote/network/dist/transport/tls.js");
+    const parsed = new URL(url);
+    const peerCert = { value: null as string | null };
+    // `socket` is a documented runtime option (ws ≥7) that the `.d.ts`
+    // doesn't declare — the cast is intentional (§3.1 pin gate).
+    const ws = new NodeWs.WebSocket(url, protocols, {
+      socket: tls.connect({
+        host: parsed.hostname,
+        port: Number(parsed.port) || 443,
+        rejectUnauthorized: true,
+        checkServerIdentity: (
+          host: string,
+          cert: import("node:tls").PeerCertificate,
+        ): string | undefined => {
+          const pem = `-----BEGIN CERTIFICATE-----\n${cert.raw?.toString("base64")}\n-----END CERTIFICATE-----`;
+          peerCert.value = pem;
+          const pinned = options.pinnedCert?.fingerprint;
+          if (pinned && !networkTls.verifyPin(pem, pinned)) {
+            throw new Error("peer certificate fails pin check");
+          }
+          void host;
+          return undefined; // undefined = identity accepted by Node's verifier
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    (ws as unknown as { __peerCertificate: { get(): string | null } }).__peerCertificate =
+      {
+        get: () => peerCert.value,
+      };
+    return ws as unknown as ClientSocket;
+  };
 }
 
 /**
@@ -98,6 +188,23 @@ export class ConnectionManager extends Emitter<ConnectionManagerEvents> {
       capabilities: ["touchpad", "keyboard", "media", "clipboard"],
       resume: options.resume,
     });
+
+    // Security-audit §3.1 — impersonation warning surfaced to the UX; the
+    // pin itself is enforced by the host's socket factory / pin gate.
+    this.connection.events.certPinFailed = (peerPem) => {
+      void peerPem;
+      this.emit("stateChange", "disconnected" as never);
+    };
+    this.connection.events.authOk = (payload) => {
+      // First successful pairing: establish the TOFU pin if we don't have one.
+      if (!this.options.pinnedCert && this.options.onPinEstablished) {
+        const peerPem = this.connection.peerCertificate;
+        if (peerPem) {
+          void this.establishPin(peerPem);
+        }
+      }
+      this.emit("authOk", payload);
+    };
     void this.options.clientName; // Advertised in Hello — kept reachable for tests.
 
     // Bridge client events onto the manager's emitter surface.
@@ -145,6 +252,17 @@ export class ConnectionManager extends Emitter<ConnectionManagerEvents> {
   /** Graceful disconnect — sends Disconnect and waits for the echo. */
   disconnect(): void {
     this.connection.disconnectGracefully();
+  }
+
+  /** Security-audit §3.1 — capture the peer fingerprint from the pairing QR code. */
+  private async establishPin(peerPem: string): Promise<void> {
+    const tls = await import("@kbm-remote/network/dist/transport/tls.js");
+    const pin: CertPin = {
+      fingerprint: tls.fingerprintOf(peerPem),
+      pinnedAt: Date.now(),
+    };
+    await this.options.onPinEstablished?.(pin);
+    this.emit("certPinEstablished", pin);
   }
 
   /** Permanent teardown — no further reconnects. */

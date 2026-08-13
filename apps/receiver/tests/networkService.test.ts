@@ -161,6 +161,112 @@ describe("NetworkService", () => {
       }
     });
 
+    it("requires the HelloAck challenge echo — plain replay fails (§3.4)", async () => {
+      const ws = await connectClient();
+      try {
+        ws.send(
+          encode({
+            t: FrameType.Hello,
+            mid: 1,
+            v: 1,
+            ts: Date.now(),
+            p: { protoVersion: "1.0", clientName: "pixel-8", clientOs: "android" },
+          }),
+        );
+        const helloAck = await receiveFrame(ws);
+        const sessionId = (helloAck.p as { sessionId: string; challenge: string })
+          .sessionId;
+        const challenge = (helloAck.p as { sessionId: string; challenge: string })
+          .challenge;
+        expect(typeof challenge).toBe("string");
+        expect(challenge.length).toBe(32); // 16 random bytes, hex
+
+        // Authenticate WITHOUT the challenge echo must fail and close 4001.
+        ws.send(
+          encode({
+            t: FrameType.Authenticate,
+            mid: 2,
+            v: 1,
+            ts: Date.now(),
+            p: { sessionId, sessionToken: "" },
+          }),
+        );
+        await receiveFrame(ws); // Ack for mid=2
+        const authReply = await receiveFrame(ws);
+        expect(authReply.t).toBe(FrameType.AuthFailed);
+        expect((authReply.p as { reason: string }).reason).toBe("challengeInvalid");
+        const closed = await new Promise<number | undefined>((resolve) => {
+          ws.once("close", (code) => resolve(code));
+        });
+        expect(closed).toBe(CLOSE_CODES.NotAuthenticated);
+      } finally {
+        ws.close();
+      }
+    });
+
+    it("rejects a reused challenge on a second Authenticate (§3.4)", async () => {
+      const ws = await connectClient();
+      try {
+        ws.send(
+          encode({
+            t: FrameType.Hello,
+            mid: 1,
+            v: 1,
+            ts: Date.now(),
+            p: { protoVersion: "1.0", clientName: "pixel-8", clientOs: "android" },
+          }),
+        );
+        const helloAck = await receiveFrame(ws);
+        const p = helloAck.p as { sessionId: string; challenge: string };
+
+        // First attempt with the right challenge and a bogus token: fails at
+        // token verification (challenge IS consumed on this attempt).
+        ws.send(
+          encode({
+            t: FrameType.Authenticate,
+            mid: 2,
+            v: 1,
+            ts: Date.now(),
+            p: { sessionId: p.sessionId, sessionToken: "bogus", challenge: p.challenge },
+          }),
+        );
+        await receiveFrame(ws); // Ack mid=2
+        const first = await receiveFrame(ws);
+        expect(first.t).toBe(FrameType.AuthFailed);
+
+        // Connection closed after first failure; verify a fresh connection can
+        // NOT replay the same challenge (issued on a different session).
+        const ws2 = await connectClient();
+        ws2.send(
+          encode({
+            t: FrameType.Hello,
+            mid: 1,
+            v: 1,
+            ts: Date.now(),
+            p: { protoVersion: "1.0", clientName: "pixel-8", clientOs: "android" },
+          }),
+        );
+        const helloAck2 = await receiveFrame(ws2);
+        const p2 = helloAck2.p as { sessionId: string; challenge: string };
+        ws2.send(
+          encode({
+            t: FrameType.Authenticate,
+            mid: 2,
+            v: 1,
+            ts: Date.now(),
+            p: { sessionId: p2.sessionId, sessionToken: "", challenge: p.challenge },
+          }),
+        );
+        await receiveFrame(ws2); // Ack mid=2
+        const second = await receiveFrame(ws2);
+        expect(second.t).toBe(FrameType.AuthFailed);
+        expect((second.p as { reason: string }).reason).toBe("challengeInvalid");
+        ws2.close();
+      } finally {
+        ws.close();
+      }
+    });
+
     it("closes with 4001 on an invalid token", async () => {
       const ws = await connectClient();
       try {

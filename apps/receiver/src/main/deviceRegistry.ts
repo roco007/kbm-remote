@@ -13,7 +13,7 @@
  * Authenticate handler verifies tokens exclusively through it, so revoking a
  * device here instantly kills its session (spec §5.3).
  */
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 
 import type { AuthStore } from "@kbm-remote/network";
 
@@ -33,8 +33,10 @@ export interface DeviceEntry {
   approvedAt: string;
   /** Permissions granted; empty means "connected, awaiting approval". */
   permissions: DevicePermission[];
-  /** Session token handed to the sender at approval (hashed at persist time in M1). */
+  /** Session token handed to the sender at approval (hashed at rest, §3.4). */
   sessionToken: string;
+  /** Salt used for the token hash — generated alongside the token. */
+  sessionTokenSalt?: string;
   /** Last seen connection metadata (updated on each Hello). */
   lastIp?: string;
   lastConnectedAt?: number;
@@ -137,6 +139,7 @@ export function createDeviceRegistry(): DeviceRegistry {
         approvedAt: new Date().toISOString(),
         permissions: ["mouse", "keyboard"],
         sessionToken: pairingTokens.get(req.requestId) ?? randomBytes(24).toString("hex"),
+        sessionTokenSalt: randomBytes(12).toString("hex"),
       };
       trusted.set(entry.deviceId, entry);
       pending.delete(deviceId);
@@ -163,7 +166,8 @@ export function createDeviceRegistry(): DeviceRegistry {
 
     requestPair(clientName, clientOs) {
       const requestId = randomBytes(8).toString("hex");
-      const code = pairingCodeFromId(requestId);
+      // Security-audit §2.6 — uniform random 6-digit code (1M-space, uniform).
+      const code = String(100000 + (randomBytes(3).readUIntBE(0, 3) % 900000));
       const token = randomBytes(24).toString("hex");
       const req: PendingRequest = {
         requestId,
@@ -197,7 +201,9 @@ export function createDeviceRegistry(): DeviceRegistry {
 
     issuePairingCode() {
       if (lastCode) return lastCode;
-      lastCode = pairingCodeFromId(randomBytes(8).toString("hex"));
+      // Security-audit §2.6 — uniform random code independent of the request
+      // id space (the old `pairingCodeFromId` hash collapsed entropy).
+      lastCode = String(100000 + (randomBytes(3).readUIntBE(0, 3) % 900000));
       return lastCode;
     },
 
@@ -213,17 +219,36 @@ export function createDeviceRegistry(): DeviceRegistry {
             ? pairingTokens.get(sessionId)
             : undefined;
           const expected = entry.sessionToken || pendingToken;
-          if (expected !== token) return null;
-          // Permissions follow the trusted entry; pending devices start with nothing.
-          const permissions = entry.permissions.length > 0 ? entry.permissions : [];
-          return permissions.length > 0
-            ? permissions
-            : (["mouse", "keyboard"] as unknown as string[]);
+          if (!expected) return null;
+          // Security-audit §3.4 — hashed tokens at rest: compare via SHA-256
+          // digest + constant-time equality (prevents registry JSON leaks).
+          let matches: boolean;
+          if (entry.sessionTokenSalt) {
+            const actualDigest = createHash("sha256")
+              .update(entry.sessionTokenSalt)
+              .update(token)
+              .digest();
+            const expectedDigest = createHash("sha256")
+              .update(entry.sessionTokenSalt)
+              .update(expected)
+              .digest();
+            matches =
+              actualDigest.length === expectedDigest.length &&
+              timingSafeEqual(actualDigest, expectedDigest);
+          } else {
+            matches = expected === token;
+          }
+          if (!matches) return null;
+          // Permissions follow the trusted entry; pending devices start with
+          // nothing — never fall back to implicit permissions (§2.7).
+          return entry.permissions.length > 0 ? entry.permissions : [];
         },
         async storeSession(sessionId, token) {
           const entry = trusted.get(sessionId);
           if (entry) {
+            // New token → new salt; hash at rest is always re-derived.
             entry.sessionToken = token;
+            entry.sessionTokenSalt = randomBytes(12).toString("hex");
           } else if (pending.has(sessionId)) {
             pairingTokens.set(sessionId, token);
           }
@@ -254,16 +279,32 @@ export function createDeviceRegistry(): DeviceRegistry {
         const entries = Array.isArray(parsed?.devices) ? parsed.devices : [];
         for (const raw of entries) {
           if (raw && typeof raw === "object" && typeof raw.deviceId === "string") {
+            // Security-audit §3.4 — migrate legacy plaintext tokens into the
+            // salted-hash store so on-disk copies always hold only digests.
+            let sessionToken: string;
+            let sessionTokenSalt: string | undefined;
+            if (raw.sessionToken && raw.sessionTokenSalt) {
+              sessionToken = raw.sessionToken;
+              sessionTokenSalt = raw.sessionTokenSalt;
+            } else if (raw.sessionToken) {
+              sessionTokenSalt = randomBytes(12).toString("hex");
+              sessionToken = createHash("sha256")
+                .update(sessionTokenSalt)
+                .update(raw.sessionToken)
+                .digest("hex");
+            } else {
+              sessionToken = randomBytes(24).toString("hex");
+              sessionTokenSalt = randomBytes(12).toString("hex");
+            }
             trusted.set(raw.deviceId, {
               deviceId: raw.deviceId,
               sessionId: raw.sessionId ?? raw.deviceId,
               deviceName: raw.deviceName ?? "Unknown device",
               deviceOs: raw.deviceOs ?? "",
               approvedAt: raw.approvedAt ?? new Date().toISOString(),
-              permissions: Array.isArray(raw.permissions)
-                ? raw.permissions
-                : ["mouse", "keyboard"],
-              sessionToken: raw.sessionToken ?? randomBytes(24).toString("hex"),
+              permissions: Array.isArray(raw.permissions) ? raw.permissions : [],
+              sessionToken,
+              sessionTokenSalt,
               lastIp: raw.lastIp,
               lastConnectedAt: raw.lastConnectedAt,
             });
@@ -278,7 +319,20 @@ export function createDeviceRegistry(): DeviceRegistry {
       if (!path) return;
       try {
         const mod = await import("node:fs");
-        const data = { devices: Array.from(trusted.values()) };
+        // Security-audit §3.4 — never write plaintext session tokens to disk.
+        const devices = Array.from(trusted.values()).map((entry) => {
+          const salt = entry.sessionTokenSalt ?? randomBytes(12).toString("hex");
+          const tokenDigest = createHash("sha256")
+            .update(salt)
+            .update(entry.sessionToken)
+            .digest("hex");
+          return {
+            ...entry,
+            sessionToken: tokenDigest,
+            sessionTokenSalt: salt,
+          };
+        });
+        const data = { devices };
         mod.writeFileSync(path, JSON.stringify(data, null, 2));
       } catch {
         // Persist failures degrade to in-memory state.
@@ -295,15 +349,6 @@ export function createDeviceRegistry(): DeviceRegistry {
       return () => set?.delete(listener as (p: RegistryEvent) => void);
     },
   };
-}
-
-/** Deterministic 6-digit code derived from the request id. */
-function pairingCodeFromId(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  }
-  return String(100000 + (hash % 900000));
 }
 
 export { PERMISSIONS, PAIRING_CODE_TTL_MS, PENDING_TTL_MS };

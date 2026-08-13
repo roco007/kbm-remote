@@ -24,8 +24,10 @@ import { Encoder, Decoder } from "msgpackr";
 
 import {
   COMPRESSION_THRESHOLD_BYTES,
+  MAX_DECOMPRESSED_BYTES,
   PROTOCOL_MAJOR_VERSION,
   compressor,
+  inflateCapped,
   type DecodeResult,
 } from "./index";
 
@@ -116,7 +118,7 @@ export function encodeFrameFast(frame: FrameEnvelope): Uint8Array {
  * Optimized decode: reused decoder + single-pass decode.
  * Identical interpretation to the baseline codec.
  */
-export function decodeFrameFast(buffer: Uint8Array): DecodeResult {
+export async function decodeFrameFast(buffer: Uint8Array): Promise<DecodeResult> {
   const raw = decoder.decode(buffer) as Record<string, unknown>;
   if (typeof raw.t !== "number" || typeof raw.p !== "object" || raw.p === null) {
     throw new Error("malformed frame envelope");
@@ -129,20 +131,20 @@ export function decodeFrameFast(buffer: Uint8Array): DecodeResult {
     const packed = (payload as { __raw?: unknown }).__raw;
     // msgpackr decodes MessagePack `bin` as Uint8Array; the baseline codec
     // decodes it as a number Array — accept both (wire-compatible).
+    let bytes: Uint8Array | undefined;
     if (Array.isArray(packed)) {
-      try {
-        payload = decoder.decode(compressor.inflate(new Uint8Array(packed)));
-      } catch {
-        throw new Error("compressed payload failed to decompress");
-      }
+      bytes = new Uint8Array(packed);
     } else if (packed instanceof Uint8Array || Buffer.isBuffer(packed)) {
-      try {
-        payload = decoder.decode(compressor.inflate(packed));
-      } catch {
-        throw new Error("compressed payload failed to decompress");
-      }
+      bytes = packed;
     } else {
       throw new Error("compressed frame missing payload bytes");
+    }
+    // Zip-bomb guard (§4.5): inflate with a hard output-size cap so a
+    // malicious 16 MB compressed frame can never inflate beyond the limit.
+    try {
+      payload = decoder.decode(await inflateCapped(bytes, MAX_DECOMPRESSED_BYTES));
+    } catch {
+      throw new Error("compressed payload failed to decompress");
     }
   }
 

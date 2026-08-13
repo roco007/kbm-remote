@@ -184,6 +184,10 @@ async function startNetworkService(): Promise<void> {
     port: s.port,
     deviceId: s.deviceId,
     authStore: registry.toAuthStore(),
+    // Persistent TLS identity (§3.1): the receiver keeps the same key+cert
+    // across restarts, so the pairing QR fingerprint is stable and a MITM
+    // cannot substitute its own certificate after first pairing.
+    identityDir: app.getPath("userData"),
   });
 
   // Surface registry events (pair requests, approvals, revocations) in the log.

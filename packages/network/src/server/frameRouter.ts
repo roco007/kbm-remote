@@ -21,6 +21,17 @@ export type FrameContext = {
   sessionId: string;
   /** True once AuthOk/PairApproved has completed for this connection. */
   authenticated: boolean;
+  /**
+   * The one-time auth challenge issued in HelloAck (§3.4). Authenticate MUST
+   * echo this exact value in `p.challenge`; any mismatch or reuse fails auth.
+   */
+  challenge?: string;
+  /**
+   * Consume the challenge (marks it used) and return its value. Used exactly
+   * once by a successful Authenticate; after that the challenge is blank and
+   * any further Authenticate on the same connection fails.
+   */
+  consumeChallenge?: () => string;
   /** Write a frame back to the peer. */
   send: (frame: FrameEnvelope) => void;
   /** Close the connection with a reason code. */

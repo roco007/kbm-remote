@@ -25,6 +25,15 @@ import { InputError } from "../mouse";
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * Async exec shape — exposed so the Win32 backend can be unit-tested and
+ * re-hosted (e.g. a sandboxed helper process) without spawning PowerShell.
+ */
+export type ExecFn = (
+  command: string,
+  args: string[],
+) => Promise<{ stdout: string; stderr: string }>;
+
 // ── grammar → native codes ────────────────────────────────────────────
 
 /** Windows virtual-key codes used by the SendInput reference backend. */
@@ -244,12 +253,19 @@ export class DarwinCliclickKeyBackend implements NativeKeyboardBackend {
 export class Win32KeyBackend implements NativeKeyboardBackend {
   readonly name = "win32-key-sendinput";
 
+  /**
+   * Security-audit §3.9 — the exec helper is injectable so the PowerShell
+   * command shape can be verified in CI without a Windows host (the
+   * reference default spawns the local `powershell` binary).
+   */
+  constructor(private readonly exec: ExecFn = execFileAsync) {}
+
   async pressKey(code: string): Promise<void> {
     const vk = Number(code);
     if (!Number.isFinite(vk)) {
       throw new InputError(`non-numeric VK code "${code}"`, "unsupportedKey");
     }
-    await execFileAsync("powershell", [
+    await this.exec("powershell", [
       "-NoProfile",
       "-Command",
       this.sendKeyEventScript(vk, /* down */ true),
@@ -261,7 +277,7 @@ export class Win32KeyBackend implements NativeKeyboardBackend {
     if (!Number.isFinite(vk)) {
       throw new InputError(`non-numeric VK code "${code}"`, "unsupportedKey");
     }
-    await execFileAsync("powershell", [
+    await this.exec("powershell", [
       "-NoProfile",
       "-Command",
       this.sendKeyEventScript(vk, /* down */ false),
@@ -272,7 +288,7 @@ export class Win32KeyBackend implements NativeKeyboardBackend {
     // Reference path: PowerShell clipboard + Ctrl+V. Full Unicode, no
     // per-character simulation — identical in contract to the nut.js path.
     const escaped = text.replace(/'/g, "''");
-    await execFileAsync("powershell", [
+    await this.exec("powershell", [
       "-NoProfile",
       "-Command",
       `Set-Clipboard -Value '${escaped}'; Start-Sleep -Milliseconds 80; Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v');`,
