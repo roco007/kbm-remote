@@ -70,6 +70,9 @@ Authoritative design artifacts live in `docs/` (copied from the design phase):
 - **Technology Evaluation Report** — input/network/discovery decisions
 - **UX Design Document** — screen specs and wireframes for both apps
 - **Protocol Documentation** — the wire contract every package implements
+- **Clipboard / Keyboard / Mouse Subsystem Docs** — input subsystem designs (M3)
+- **Mobile Sender (M4)** — Expo app architecture and screens
+- **Receiver UI (M5)** — Electron dashboard, tray, pairing, permissions
 
 ## Roadmap
 
@@ -79,8 +82,9 @@ Authoritative design artifacts live in `docs/` (copied from the design phase):
 | M1        | Auth package + pairing codes + session tokens               |
 | M2        | Protocol codec + WSS client/server + heartbeat/RTT          |
 | M3        | Input provider (nut.js default + native fallbacks)          |
-| M4        | mDNS/UDP-beacon discovery, reconnect, multi-monitor mapping |
-| M5        | Receiver dashboard (R1–R12) + sender screens (S1–S11)       |
+| M4        | Mobile sender — 8 M3 screens, Zustand, React Navigation       |
+| M5        | Electron receiver dashboard — tray, auto-start, pairing,      |
+|           | permissions, logs, settings, connection monitoring            |
 | M6        | Hardening, E2E tests, release packaging                     |
 
 ## License

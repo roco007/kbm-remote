@@ -5,9 +5,9 @@
   "description": "KBM Remote desktop receiver — Electron shell hosting a NestJS server (per Architecture §2.2)",
   "main": "dist/main/main.js",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "dev": "tsc -p tsconfig.build.json --watch",
-    "lint": "eslint src tests --ext .ts",
+    "build": "tsc -p tsconfig.build.json && node esbuild.renderer.mjs && cp src/renderer/index.html dist/renderer/index.html",
+    "dev": "tsc -p tsconfig.build.json --watch & node esbuild.renderer.mjs --watch",
+    "lint": "eslint src tests --ext .ts,.tsx",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -15,26 +15,34 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@kbm-remote/protocol": "workspace:*",
-    "@kbm-remote/network": "workspace:*",
     "@kbm-remote/auth": "workspace:*",
     "@kbm-remote/input-provider": "workspace:*",
+    "@kbm-remote/network": "workspace:*",
+    "@kbm-remote/protocol": "workspace:*",
     "@kbm-remote/ui-components": "workspace:*",
-    "electron": "^36.2.1",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
-    "@nestjs/websockets": "^11.1.6",
     "@nestjs/platform-socket.io": "^11.1.6",
+    "@nestjs/websockets": "^11.1.6",
+    "electron": "^36.2.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@msgpack/msgpack": "^3.0.1",
     "@types/node": "^22.15.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@types/ws": "^8.5.10",
+    "esbuild": "^0.24.0",
     "eslint": "^8.57.1",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "^5.8.3",
     "vitest": "^3.2.1",
     "ws": "^8.18.0",
-    "@types/ws": "^8.5.10",
-    "@msgpack/msgpack": "^3.0.1"
+    "zustand": "^5.0.3"
   }
 }

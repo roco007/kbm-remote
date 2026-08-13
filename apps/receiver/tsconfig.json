@@ -5,7 +5,10 @@
     "outDir": "dist",
     "composite": true,
     "emitDecoratorMetadata": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node", "react", "qrcode"]
   },
   "references": [
     { "path": "../../packages/protocol" },
@@ -14,5 +17,5 @@
     { "path": "../../packages/input-provider" },
     { "path": "../../packages/ui-components" }
   ],
-  "include": ["src/**/*.ts", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"]
 }
