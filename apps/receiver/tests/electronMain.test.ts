@@ -9,6 +9,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { createDeviceRegistry } from "../src/main/deviceRegistry";
@@ -36,7 +37,9 @@ describe("settingsStore", () => {
   it("applies is atomic — returns the same snapshot tsc typechecks", () => {
     const store = createSettingsStore("", DEFAULT_SETTINGS);
     const snapshot = store.get();
-    expect(store.apply((cur) => ({ ...cur, autoStart: !cur.autoStart }))).not.toBe(snapshot);
+    expect(store.apply((cur) => ({ ...cur, autoStart: !cur.autoStart }))).not.toBe(
+      snapshot,
+    );
   });
 });
 
@@ -86,7 +89,9 @@ describe("deviceRegistry", () => {
 
     const authStore = registry.toAuthStore();
     expect(await authStore.verifyToken(approved.sessionId, "garbage")).toBeNull();
-    expect(await authStore.verifyToken(approved.sessionId, approved.sessionToken)).not.toBeNull();
+    expect(
+      await authStore.verifyToken(approved.sessionId, approved.sessionToken),
+    ).not.toBeNull();
   });
 });
 
